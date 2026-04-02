@@ -1,0 +1,24 @@
+name: 認証診断
+
+on:
+  workflow_dispatch:  # 手動実行のみ
+
+jobs:
+  debug:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: requests をインストール
+        run: pip install requests
+
+      - name: 認証診断を実行
+        env:
+          THREADS_ACCESS_TOKEN: ${{ secrets.THREADS_ACCESS_TOKEN }}
+        run: python debug_auth.py
