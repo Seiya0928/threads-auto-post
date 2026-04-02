@@ -1,11 +1,11 @@
 name: Threads 自動投稿
 
 on:
-  # 毎日 21:00 JST (= 12:00 UTC)
   schedule:
-    - cron: '0 12 * * *'
-  # 手動実行も可能（テスト用）
-  workflow_dispatch:
+    - cron: '0 23 * * *'   # 08:00 JST（朝のルーティン）
+    - cron: '0 3 * * *'    # 12:00 JST（昼の毒舌）
+    - cron: '0 12 * * *'   # 21:00 JST（夜のガチ解説）
+  workflow_dispatch:        # 手動実行（テスト用）
 
 jobs:
   post:
@@ -30,6 +30,7 @@ jobs:
       - name: Threads に投稿
         env:
           THREADS_ACCESS_TOKEN: ${{ secrets.THREADS_ACCESS_TOKEN }}
-          THREADS_USER_ID: ${{ secrets.THREADS_USER_ID }}
-          DEFAULT_HASHTAGS: '#スキンケア #美容 #skincare #美肌 #保湿'
+          THREADS_USER_ID:      ${{ secrets.THREADS_USER_ID }}
+          GEMINI_API_KEY:       ${{ secrets.GEMINI_API_KEY }}
+          AFFILIATE_URL:        ${{ secrets.AFFILIATE_URL }}
         run: python post_once.py

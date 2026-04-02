@@ -1,74 +1,82 @@
 """
-trend_fetcher.py — スキンケア・美容系の投稿テキストを生成する
+trend_fetcher.py — Google Trends から美容系トレンドキーワードを取得する
 
-Threads APIにはトレンド取得機能がないため、
-季節・曜日に合わせたスキンケアコンテンツを自動選択する。
+pytrends（非公式・無料・APIキー不要）を使用。
+取得失敗時はフォールバックキーワードを返す。
 """
 
+import logging
 import random
 from datetime import datetime
+from typing import List
 
+log = logging.getLogger(__name__)
 
-SKINCARE_CONTENT = {
-    "morning": [
-        "朝のスキンケアルーティン🌿 洗顔→化粧水→美容液→乳液の順番が大切。\n\n今日も丁寧に肌と向き合う朝。",
-        "紫外線対策は365日。曇りの日でもUVケアを忘れずに🌤️",
-        "朝の保湿が一日の肌コンディションを決める。水分補給をしっかり✨",
-    ],
-    "evening": [
-        "夜のスキンケアは肌の再生タイム🌙 クレンジングは優しく丁寧に。",
-        "今夜はスペシャルケアの日。シートマスクでしっかり保湿💆‍♀️",
-        "肌の修復は睡眠中に行われる。良質な睡眠と保湿でエイジングケア🌛",
-    ],
-    "weekly": [
-        "週に1〜2回のスクラブケアで毛穴の汚れをオフ🫧 つるつる肌を目指して。",
-        "週末は集中保湿ケアの日✨ パックをしながらゆっくりリラックス。",
-        "定期的なフェイスマッサージで血行促進💆‍♀️ むくみ顔にサヨナラ。",
-    ],
-    "seasonal": [
-        "季節の変わり目は肌荒れしやすい時期。バリア機能を高めるセラミド成分を意識して🍃",
-        "乾燥が気になる季節は重ね付け保湿がカギ🌿 化粧水を手で優しく押さえ込んで。",
-        "湿度が高い季節はさっぱり系スキンケアで毛穴ケアを忘れずに☀️",
-    ],
-}
-
-HASHTAG_SETS = [
-    "#スキンケア #美容 #skincare #美肌 #保湿",
-    "#美容 #スキンケア #美肌ケア #エイジングケア #毛穴ケア",
-    "#skincare #beautytips #スキンケア #肌活 #美容好き",
-    "#日本のスキンケア #スキンケア好き #美肌 #保湿ケア #美容routine",
+FALLBACK_KEYWORDS = [
+    ["セラミド", "バリア機能", "インナードライ"],
+    ["レチノール", "エイジングケア", "ターンオーバー"],
+    ["ナイアシンアミド", "毛穴", "美白"],
+    ["日焼け止め", "UV", "紫外線対策"],
+    ["クレンジング", "毛穴洗浄", "皮脂"],
+    ["化粧水", "浸透", "重ね付け"],
 ]
+
+BEAUTY_SEEDS = ["スキンケア", "美容液", "日焼け止め", "保湿クリーム"]
+
+
+def fetch_beauty_trends() -> List[str]:
+    """
+    Google Trends から美容系トレンドキーワードを取得する。
+    失敗時はフォールバックキーワードを返す。
+    """
+    try:
+        from pytrends.request import TrendReq
+
+        pytrends = TrendReq(hl="ja-JP", tz=540, timeout=(10, 25))
+        pytrends.build_payload(
+            kw_list=BEAUTY_SEEDS[:3],
+            timeframe="now 1-d",
+            geo="JP",
+        )
+        related = pytrends.related_queries()
+
+        keywords = []
+        for kw_data in related.values():
+            top = kw_data.get("top")
+            if top is not None and not top.empty:
+                keywords.extend(top["query"].tolist()[:3])
+
+        if keywords:
+            log.info(f"トレンド取得成功: {keywords[:6]}")
+            return keywords[:6]
+        else:
+            raise ValueError("トレンドデータが空")
+
+    except Exception as e:
+        log.warning(f"Googleトレンド取得失敗 → フォールバック使用: {e}")
+        return random.choice(FALLBACK_KEYWORDS)
+
+
+def get_slot_from_jst_hour(jst_hour: int) -> str:
+    """JST時刻から投稿スロットを判定する"""
+    if 5 <= jst_hour < 11:
+        return "morning"
+    elif 11 <= jst_hour < 17:
+        return "noon"
+    else:
+        return "evening"
+
+
+HASHTAG_SETS = {
+    "morning": "#スキンケア #朝活 #美肌ルーティン #skincare #美容男子",
+    "noon":    "#美容の嘘 #スキンケア #コスパ最強 #skincare #美肌",
+    "evening": "#夜スキンケア #美容液 #エイジングケア #skincare #保湿",
+}
 
 
 def build_post_text(base_hashtags: str = "") -> str:
-    """
-    時間帯・曜日に合わせたスキンケアテキストとハッシュタグを組み合わせて返す。
-    """
+    """後方互換用: スロットに合わせたハッシュタグのみ返す（旧poster.py呼び出し用）"""
     now = datetime.now()
-    hour = now.hour
-    weekday = now.weekday()  # 0=月曜 〜 6=日曜
-
-    if weekday >= 5:  # 土日
-        category = "weekly"
-    elif 5 <= hour < 12:
-        category = "morning"
-    elif 17 <= hour:
-        category = "evening"
-    else:
-        category = "seasonal"
-
-    body = random.choice(SKINCARE_CONTENT[category])
-    hashtags = base_hashtags or random.choice(HASHTAG_SETS)
-
-    text = f"{body}\n\n{hashtags}"
-
-    if len(text) > 500:
-        text = text[:497] + "..."
-
-    return text
-
-
-if __name__ == "__main__":
-    for _ in range(3):
-        print(build_post_text())
-        print("---")
+    jst_hour = (now.hour + 9) % 24
+    slot = get_slot_from_jst_hour(jst_hour)
+    return base_hashtags or HASHTAG_SETS.get(slot, HASHTAG_SETS["evening"])
