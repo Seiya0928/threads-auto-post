@@ -7,6 +7,10 @@ on:
     - cron: '0 12 * * *'   # 21:00 JST（夜のガチ解説）
   workflow_dispatch:        # 手動実行（テスト用）
 
+concurrency:
+  group: threads-post
+  cancel-in-progress: false  # 同時実行を防ぐ（同じグループの実行は1件ずつ順番に処理）
+
 jobs:
   post:
     runs-on: ubuntu-latest

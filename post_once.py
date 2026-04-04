@@ -108,6 +108,11 @@ def main():
         log.error(f"認証失敗: {e}")
         sys.exit(1)
 
+    # ── 冪等性チェック（2時間以内に投稿済みならスキップ）────
+    if client.was_recently_posted(within_hours=2):
+        log.warning("直近2時間以内に投稿済みのため、重複投稿をスキップします")
+        sys.exit(0)
+
     try:
         thread_id = client.post_text(full_text)
         log.info(f"投稿成功: thread_id={thread_id}")

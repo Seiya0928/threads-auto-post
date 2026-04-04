@@ -99,3 +99,37 @@ class ThreadsClient:
     def post_image(self, image_url: str, text: str) -> str:
         container_id = self.create_image_container(image_url, text)
         return self.publish(container_id)
+
+    # ------------------------------------------------------------------
+    # 冪等性チェック
+    # ------------------------------------------------------------------
+
+    def was_recently_posted(self, within_hours: int = 2) -> bool:
+        """指定時間内に投稿済みかどうかを確認する。確認失敗時は安全側（False）を返す。"""
+        try:
+            resp = requests.get(
+                f"{THREADS_API}/{self.user_id}/threads",
+                params={
+                    "fields": "id,timestamp",
+                    "limit": 5,
+                    "access_token": self.token,
+                },
+                timeout=15,
+            )
+            resp.raise_for_status()
+            posts = resp.json().get("data", [])
+            if not posts:
+                return False
+            cutoff = time.time() - within_hours * 3600
+            for post in posts:
+                ts = post.get("timestamp", "")
+                if ts:
+                    import datetime
+                    post_time = datetime.datetime.fromisoformat(ts.replace("Z", "+00:00"))
+                    if post_time.timestamp() > cutoff:
+                        log.info(f"直近{within_hours}時間以内の投稿を検出: id={post['id']} at {ts}")
+                        return True
+            return False
+        except Exception as e:
+            log.warning(f"直近投稿チェック失敗（スキップ判定せず続行）: {e}")
+            return False
