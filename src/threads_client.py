@@ -104,6 +104,24 @@ class ThreadsClient:
     # 冪等性チェック
     # ------------------------------------------------------------------
 
+    def get_post_metrics(self, thread_id: str) -> dict:
+        """投稿のviews/likes/repliesを取得する。失敗時は空dict。"""
+        try:
+            resp = requests.get(
+                f"{THREADS_API}/{thread_id}/insights",
+                params={
+                    "metric": "views,likes,replies,reposts,quotes",
+                    "access_token": self.token,
+                },
+                timeout=15,
+            )
+            resp.raise_for_status()
+            data = resp.json().get("data", [])
+            return {item["name"]: item.get("values", [{}])[-1].get("value", 0) for item in data}
+        except Exception as e:
+            log.warning(f"メトリクス取得失敗 thread_id={thread_id}: {e}")
+            return {}
+
     def was_recently_posted(self, within_hours: int = 2) -> bool:
         """指定時間内に投稿済みかどうかを確認する。確認失敗時は安全側（False）を返す。"""
         try:

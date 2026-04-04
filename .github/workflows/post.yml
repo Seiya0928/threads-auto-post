@@ -2,10 +2,9 @@ name: Threads 自動投稿
 
 on:
   schedule:
-    - cron: '0 23 * * *'   # 08:00 JST（朝のルーティン）
-    - cron: '0 3 * * *'    # 12:00 JST（昼の毒舌）
-    - cron: '0 12 * * *'   # 21:00 JST（夜のガチ解説）
-  workflow_dispatch:        # 手動実行（テスト用）
+    - cron: '30 22 * * *'   # 07:30 JST（朝の準備時間）
+    - cron: '30 12 * * *'   # 21:30 JST（夜のゴールデンタイム）
+  workflow_dispatch:         # 手動実行（テスト用）
 
 concurrency:
   group: threads-post
@@ -15,6 +14,8 @@ jobs:
   post:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      contents: write        # A/Bテストログをコミットするために必要
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
@@ -38,3 +39,11 @@ jobs:
           GEMINI_API_KEY:       ${{ secrets.GEMINI_API_KEY }}
           AFFILIATE_URL:        ${{ secrets.AFFILIATE_URL }}
         run: python post_once.py
+
+      - name: A/Bテストログをコミット
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/post_log.json
+          git diff --staged --quiet || git commit -m "chore: update post log [skip ci]"
+          git push
