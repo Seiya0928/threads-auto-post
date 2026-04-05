@@ -1,0 +1,48 @@
+name: Threads ビジネス自動投稿
+
+on:
+  schedule:
+    - cron: '0 23 * * *'   # 08:00 JST（朝）
+    - cron: '0 13 * * *'   # 22:00 JST（夜のゴールデンタイム）
+  workflow_dispatch:         # 手動実行（テスト用）
+
+concurrency:
+  group: threads-business-post
+  cancel-in-progress: false
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+    steps:
+      - name: リポジトリをチェックアウト
+        uses: actions/checkout@v4
+
+      - name: Python をセットアップ
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: 依存ライブラリをインストール
+        run: pip install -r requirements.txt
+
+      - name: Threads に投稿
+        env:
+          BUSINESS_THREADS_ACCESS_TOKEN: ${{ secrets.BUSINESS_THREADS_ACCESS_TOKEN }}
+          BUSINESS_THREADS_USER_ID:      ${{ secrets.BUSINESS_THREADS_USER_ID }}
+          GEMINI_API_KEY:                ${{ secrets.GEMINI_API_KEY }}
+        run: python main_business.py
+
+      - name: ログをコミット
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/post_log_business.json
+          git diff --staged --quiet || git commit -m "chore: update business post log [skip ci]"
+          git push
