@@ -1,8 +1,8 @@
 name: X 投稿下書き生成
 
 on:
-  schedule:
-    - cron: '0 13 * * *'   # 22:00 JST（UTC 13:00）
+  # schedule:
+  #   - cron: '0 13 * * *'   # 22:00 JST（UTC 13:00）
   workflow_dispatch:         # 手動実行（テスト用）
 
 concurrency:
