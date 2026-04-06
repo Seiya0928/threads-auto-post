@@ -188,9 +188,9 @@ def generate_drafts(
         List of {"type": str, "label": str, "text": str}
     """
     try:
-        import google.generativeai as genai
+        from google import genai
     except ImportError:
-        log.error("google-generativeai 未インストール: pip install google-generativeai")
+        log.error("google-genai 未インストール: pip install google-genai")
         return []
 
     key = api_key or os.environ.get("GEMINI_API_KEY", "")
@@ -198,8 +198,7 @@ def generate_drafts(
         log.error("GEMINI_API_KEY が設定されていません")
         return []
 
-    genai.configure(api_key=key)
-    model = genai.GenerativeModel("gemini-2.0-flash")
+    client = genai.Client(api_key=key)
 
     topics = _pick_topics(count)
     drafts = []
@@ -211,8 +210,11 @@ def generate_drafts(
         prompt    = PROMPT_MAP[post_type].format(topic=topic, variation=variation)
 
         try:
-            response = model.generate_content(prompt)
-            text     = response.text.strip()
+            response = client.models.generate_content(
+                model="gemini-2.0-flash",
+                contents=prompt,
+            )
+            text = response.text.strip()
             log.info(f"生成完了 [{i+1}/{count}] type={post_type} topic={topic} / {len(text)}文字")
             drafts.append({
                 "type":  post_type,
