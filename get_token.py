@@ -16,7 +16,7 @@ import requests
 # ── ここに入力 ────────────────────────────────────────
 APP_ID     = input("App ID を入力してください（数字のみ）: ").strip()
 APP_SECRET = input("App Secret を入力してください: ").strip()
-REDIRECT   = "https://localhost"
+REDIRECT   = "https://localhost/"
 # ─────────────────────────────────────────────────────
 
 # 入力値の検証
@@ -34,7 +34,7 @@ print(f"\n✅ App ID 確認: {APP_ID} (長さ={len(APP_ID)}文字)")
 SCOPES = "threads_basic,threads_content_publish"
 
 auth_url = (
-    "https://www.threads.net/oauth/authorize"
+    "https://threads.net/oauth/authorize"
     f"?client_id={APP_ID}"
     f"&redirect_uri={urllib.parse.quote(REDIRECT, safe='')}"
     f"&scope={SCOPES}"

@@ -1,0 +1,45 @@
+name: X 投稿下書き生成
+
+on:
+  schedule:
+    - cron: '0 13 * * *'   # 22:00 JST（UTC 13:00）
+  workflow_dispatch:         # 手動実行（テスト用）
+
+concurrency:
+  group: x-draft-generate
+  cancel-in-progress: false
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write        # 下書きファイルをコミットするために必要
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+    steps:
+      - name: リポジトリをチェックアウト
+        uses: actions/checkout@v4
+
+      - name: Python をセットアップ
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: 依存ライブラリをインストール
+        run: pip install -r requirements.txt
+
+      - name: X 投稿下書きを生成・保存
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: python generate_x_drafts.py
+
+      - name: 下書きファイルをコミット
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add x_drafts/
+          git diff --staged --quiet || git commit -m "chore: add X drafts $(date -u +'%Y-%m-%d') [skip ci]"
+          git push
