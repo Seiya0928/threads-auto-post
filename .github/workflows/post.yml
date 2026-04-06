@@ -18,6 +18,7 @@ jobs:
       contents: write        # A/Bテストログをコミットするために必要
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+      FORCE_POST: "true"
 
     steps:
       - name: リポジトリをチェックアウト
