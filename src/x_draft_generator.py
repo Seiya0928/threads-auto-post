@@ -211,7 +211,7 @@ def generate_drafts(
 
         try:
             response = client.models.generate_content(
-                model="gemini-1.5-flash-8b",
+                model="gemini-1.5-flash",
                 contents=prompt,
             )
             text = response.text.strip()
