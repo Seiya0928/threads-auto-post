@@ -178,7 +178,10 @@ def main():
     ab_log = update_metrics(ab_log, client)
 
     # ── 冪等性チェック（2時間以内に投稿済みならスキップ）───────────────
-    if client.was_recently_posted(within_hours=2):
+    force_post = os.environ.get("FORCE_POST", "").lower() == "true"
+    if force_post:
+        log.warning("FORCE_POST=true のため冪等性チェックをスキップします")
+    elif client.was_recently_posted(within_hours=2):
         log.warning("直近2時間以内に投稿済みのため、重複投稿をスキップします")
         save_log(ab_log)
         sys.exit(0)
