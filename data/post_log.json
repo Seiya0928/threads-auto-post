@@ -67,9 +67,9 @@
     "style": "list",
     "slot": "noon",
     "posted_at": "2026-04-07T03:29:24.430372+00:00",
-    "views": null,
-    "likes": null,
-    "replies": null
+    "views": 74,
+    "likes": 0,
+    "replies": 0
   },
   {
     "thread_id": "17877790443556226",
@@ -85,6 +85,15 @@
     "style": "list",
     "slot": "noon",
     "posted_at": "2026-04-07T03:56:28.473161+00:00",
+    "views": 334,
+    "likes": 2,
+    "replies": 0
+  },
+  {
+    "thread_id": "18086294537203900",
+    "style": "list",
+    "slot": "evening",
+    "posted_at": "2026-04-07T16:19:20.984153+00:00",
     "views": null,
     "likes": null,
     "replies": null
