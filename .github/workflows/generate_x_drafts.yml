@@ -33,7 +33,7 @@ jobs:
 
       - name: X 投稿下書きを生成・保存
         env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY_X }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
         run: python generate_x_drafts.py
 
       - name: 下書きファイルをコミット

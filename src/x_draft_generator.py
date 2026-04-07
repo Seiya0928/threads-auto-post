@@ -188,17 +188,17 @@ def generate_drafts(
         List of {"type": str, "label": str, "text": str}
     """
     try:
-        from google import genai
+        from groq import Groq
     except ImportError:
-        log.error("google-genai 未インストール: pip install google-genai")
+        log.error("groq 未インストール: pip install groq")
         return []
 
-    key = api_key or os.environ.get("GEMINI_API_KEY", "")
+    key = api_key or os.environ.get("GROQ_API_KEY", "")
     if not key:
-        log.error("GEMINI_API_KEY が設定されていません")
+        log.error("GROQ_API_KEY が設定されていません")
         return []
 
-    client = genai.Client(api_key=key)
+    client = Groq(api_key=key)
 
     topics = _pick_topics(count)
     drafts = []
@@ -210,11 +210,11 @@ def generate_drafts(
         prompt    = PROMPT_MAP[post_type].format(topic=topic, variation=variation)
 
         try:
-            response = client.models.generate_content(
-                model="gemini-2.0-flash-lite",
-                contents=prompt,
+            response = client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=[{"role": "user", "content": prompt}],
             )
-            text = response.text.strip()
+            text = response.choices[0].message.content.strip()
             log.info(f"生成完了 [{i+1}/{count}] type={post_type} topic={topic} / {len(text)}文字")
             drafts.append({
                 "type":  post_type,

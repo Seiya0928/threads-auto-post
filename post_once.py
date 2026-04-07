@@ -147,9 +147,9 @@ def main():
         log.error("THREADS_ACCESS_TOKEN が設定されていません")
         sys.exit(1)
 
-    gemini_key = os.environ.get("GEMINI_API_KEY", "")
-    if not gemini_key:
-        log.warning("GEMINI_API_KEY 未設定 → フォールバックテキストを使用")
+    groq_key = os.environ.get("GROQ_API_KEY", "")
+    if not groq_key:
+        log.warning("GROQ_API_KEY 未設定 → フォールバックテキストを使用")
 
     sys.path.insert(0, os.path.dirname(__file__))
 
@@ -194,11 +194,11 @@ def main():
     trends = fetch_beauty_trends()
     log.info(f"キーワード: {trends}")
 
-    # ── Gemini で投稿文生成 ───────────────────────────────────────────────
+    # ── Groq で投稿文生成 ────────────────────────────────────────────────
     body = None
-    if gemini_key:
-        log.info(f"Gemini API で投稿文を生成中... (style={style})")
-        body = generate_post(slot=slot, trend_keywords=trends, api_key=gemini_key, style=style)
+    if groq_key:
+        log.info(f"Groq API で投稿文を生成中... (style={style})")
+        body = generate_post(slot=slot, trend_keywords=trends, api_key=groq_key, style=style)
 
     # フォールバック
     if not body:

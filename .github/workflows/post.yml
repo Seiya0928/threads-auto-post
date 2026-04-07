@@ -37,7 +37,7 @@ jobs:
         env:
           THREADS_ACCESS_TOKEN: ${{ secrets.THREADS_ACCESS_TOKEN }}
           THREADS_USER_ID:      ${{ secrets.THREADS_USER_ID }}
-          GEMINI_API_KEY:       ${{ secrets.GEMINI_API_KEY }}
+          GROQ_API_KEY:         ${{ secrets.GROQ_API_KEY }}
           AFFILIATE_URL:        ${{ secrets.AFFILIATE_URL }}
         run: python post_once.py
 

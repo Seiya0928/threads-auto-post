@@ -220,14 +220,14 @@ def generate_post(
         生成された投稿テキスト。失敗時は None。
     """
     try:
-        import google.generativeai as genai
+        from groq import Groq
     except ImportError:
-        log.error("google-generativeai 未インストール: pip install google-generativeai")
+        log.error("groq 未インストール: pip install groq")
         return None
 
-    key = api_key or os.environ.get("GEMINI_API_KEY", "")
+    key = api_key or os.environ.get("GROQ_API_KEY", "")
     if not key:
-        log.error("GEMINI_API_KEY が設定されていません")
+        log.error("GROQ_API_KEY が設定されていません")
         return None
 
     config       = SLOT_CONFIG.get(slot, SLOT_CONFIG["evening"])
@@ -246,12 +246,14 @@ def generate_post(
     )
 
     try:
-        genai.configure(api_key=key)
-        model    = genai.GenerativeModel("gemini-2.0-flash")
-        response = model.generate_content(prompt)
-        text     = response.text.strip()
-        log.info(f"Gemini生成完了: {len(text)}文字 / slot={slot} / style={style}")
+        client   = Groq(api_key=key)
+        response = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[{"role": "user", "content": prompt}],
+        )
+        text = response.choices[0].message.content.strip()
+        log.info(f"Groq生成完了: {len(text)}文字 / slot={slot} / style={style}")
         return text
     except Exception as e:
-        log.error(f"Gemini API エラー: {e}")
+        log.error(f"Groq API エラー: {e}")
         return None
