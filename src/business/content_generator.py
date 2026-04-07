@@ -178,24 +178,24 @@ def generate_post(
     api_key: Optional[str] = None,
 ) -> Optional[str]:
     """
-    Gemini API でビジネス・AI副業系の投稿テキストを生成する。
+    Groq API でビジネス・AI副業系の投稿テキストを生成する。
 
     Args:
         slot:    "morning" | "noon" | "evening"
-        api_key: Gemini API キー（省略時は GEMINI_API_KEY 環境変数）
+        api_key: Groq API キー（省略時は GROQ_API_KEY 環境変数）
 
     Returns:
         生成された投稿テキスト。失敗時は None。
     """
     try:
-        import google.generativeai as genai
+        from groq import Groq
     except ImportError:
-        log.error("google-generativeai 未インストール")
+        log.error("groq 未インストール: pip install groq")
         return None
 
-    key = api_key or os.environ.get("GEMINI_API_KEY", "")
+    key = api_key or os.environ.get("GROQ_API_KEY", "")
     if not key:
-        log.error("GEMINI_API_KEY が設定されていません")
+        log.error("GROQ_API_KEY が設定されていません")
         return None
 
     hook   = _build_hook(slot)
@@ -203,12 +203,14 @@ def generate_post(
     prompt = _build_prompt(slot, hook, cta)
 
     try:
-        genai.configure(api_key=key)
-        model    = genai.GenerativeModel("gemini-1.5-flash")
-        response = model.generate_content(prompt)
-        text     = response.text.strip()
-        log.info(f"Gemini生成完了: {len(text)}文字 / slot={slot}")
+        client   = Groq(api_key=key)
+        response = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[{"role": "user", "content": prompt}],
+        )
+        text = response.choices[0].message.content.strip()
+        log.info(f"Groq生成完了: {len(text)}文字 / slot={slot}")
         return text
     except Exception as e:
-        log.error(f"Gemini API エラー: {e}")
+        log.error(f"Groq API エラー: {e}")
         return None

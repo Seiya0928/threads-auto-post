@@ -84,9 +84,9 @@ def main():
         log.error("BUSINESS_THREADS_ACCESS_TOKEN が設定されていません")
         sys.exit(1)
 
-    gemini_key = os.environ.get("GEMINI_API_KEY", "")
-    if not gemini_key:
-        log.warning("GEMINI_API_KEY 未設定 → フォールバックテキストを使用")
+    groq_key = os.environ.get("GROQ_API_KEY", "")
+    if not groq_key:
+        log.warning("GROQ_API_KEY 未設定 → フォールバックテキストを使用")
 
     sys.path.insert(0, os.path.dirname(__file__))
     from src.threads_client import ThreadsClient
@@ -115,8 +115,8 @@ def main():
     from src.business.content_generator import FALLBACK_POSTS as BUSINESS_FALLBACK
 
     body = None
-    if gemini_key:
-        body = generate_post(slot=slot, api_key=gemini_key)
+    if groq_key:
+        body = generate_post(slot=slot, api_key=groq_key)
 
     if not body:
         log.warning("生成失敗 → フォールバックテキストを使用")
