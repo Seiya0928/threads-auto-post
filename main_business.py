@@ -13,6 +13,7 @@ main_business.py — Threads ビジネス・AI活用 自動投稿スクリプト
 import json
 import logging
 import os
+import random
 import sys
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
@@ -120,7 +121,7 @@ def main():
 
     if not body:
         log.warning("生成失敗 → フォールバックテキストを使用")
-        body = BUSINESS_FALLBACK.get(slot, BUSINESS_FALLBACK["evening"])
+        body = random.choice(BUSINESS_FALLBACK)
 
     full_text = build_full_text(body, slot)
     log.info(f"投稿テキスト ({len(full_text)}文字):\n{full_text}")
