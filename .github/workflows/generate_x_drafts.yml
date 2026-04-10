@@ -43,3 +43,37 @@ jobs:
           git add x_drafts/
           git diff --staged --quiet || git commit -m "chore: add X drafts $(date -u +'%Y-%m-%d') [skip ci]"
           git push
+
+      - name: Gmail で通知を送信
+        env:
+          GMAIL_USER:         ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+        run: |
+          DATE=$(date -u +'%Y-%m-%d')
+          DRAFT_FILE="x_drafts/${DATE}.txt"
+          if [ -f "$DRAFT_FILE" ]; then
+            BODY=$(cat "$DRAFT_FILE")
+          else
+            BODY="下書きファイルが見つかりませんでした: ${DRAFT_FILE}"
+          fi
+          python3 - <<EOF
+          import smtplib, os
+          from email.mime.text import MIMEText
+          from email.header import Header
+
+          user     = os.environ["GMAIL_USER"]
+          password = os.environ["GMAIL_APP_PASSWORD"]
+          date     = "${DATE}"
+          body     = """${BODY}"""
+
+          msg = MIMEText(body, "plain", "utf-8")
+          msg["Subject"] = Header(f"X下書き生成完了 {date}", "utf-8")
+          msg["From"]    = user
+          msg["To"]      = user
+
+          with smtplib.SMTP("smtp.gmail.com", 587) as smtp:
+              smtp.starttls()
+              smtp.login(user, password)
+              smtp.send_message(msg)
+          print("メール送信完了")
+          EOF
