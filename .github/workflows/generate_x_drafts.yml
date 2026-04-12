@@ -49,7 +49,7 @@ jobs:
           GMAIL_USER:         ${{ secrets.GMAIL_USER }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
         run: |
-          DATE=$(date -u +'%Y-%m-%d')
+          DATE=$(TZ=Asia/Tokyo date +'%Y-%m-%d')
           DRAFT_FILE="x_drafts/${DATE}.txt"
           if [ -f "$DRAFT_FILE" ]; then
             BODY=$(cat "$DRAFT_FILE")
