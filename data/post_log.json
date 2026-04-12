@@ -175,6 +175,15 @@
     "style": "list",
     "slot": "morning",
     "posted_at": "2026-04-12T00:01:03.381318+00:00",
+    "views": 78,
+    "likes": 0,
+    "replies": 0
+  },
+  {
+    "thread_id": "17960728803099662",
+    "style": "list",
+    "slot": "evening",
+    "posted_at": "2026-04-12T14:59:06.974570+00:00",
     "views": null,
     "likes": null,
     "replies": null
