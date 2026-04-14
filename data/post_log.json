@@ -202,6 +202,15 @@
     "style": "list",
     "slot": "evening",
     "posted_at": "2026-04-13T16:45:44.267421+00:00",
+    "views": 8,
+    "likes": 0,
+    "replies": 0
+  },
+  {
+    "thread_id": "17966724846027867",
+    "style": "list",
+    "slot": "noon",
+    "posted_at": "2026-04-14T06:07:59.019769+00:00",
     "views": null,
     "likes": null,
     "replies": null
