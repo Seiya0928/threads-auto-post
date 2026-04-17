@@ -35,9 +35,9 @@ def format_drafts(drafts: list) -> str:
 
 
 def main():
-    groq_key = os.environ.get("GROQ_API_KEY", "")
-    if not groq_key:
-        log.error("GROQ_API_KEY が設定されていません")
+    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+    if not api_key:
+        log.error("ANTHROPIC_API_KEY が設定されていません")
         sys.exit(1)
 
     sys.path.insert(0, os.path.dirname(__file__))
@@ -46,7 +46,7 @@ def main():
     count = random.randint(3, 5)
     log.info(f"X投稿下書きを {count} 本生成します")
 
-    drafts = generate_drafts(count=count, api_key=groq_key)
+    drafts = generate_drafts(count=count, api_key=api_key)
     if not drafts:
         log.error("下書き生成に失敗しました")
         sys.exit(1)
