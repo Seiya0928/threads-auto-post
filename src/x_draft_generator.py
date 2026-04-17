@@ -2,9 +2,9 @@
 x_draft_generator.py — X（旧Twitter）用投稿下書き生成モジュール
 
 投稿タイプ比率:
-  - 知識系 40%: スキンケアtips・成分解説（日英ミックス）
-  - 体験系 25%: 施術・変化の記録（日本語中心）
-  - 共感系 20%: あるある・独り言（短め・英語OK）
+  - 知識系 40%: スキンケアtips・成分解説（日本語）
+  - 体験系 25%: 施術・変化の記録（日本語）
+  - 共感系 20%: あるある・独り言（短め）
   - 反応系 15%: ミームへのコメント（カジュアル）
 """
 
@@ -14,8 +14,6 @@ import random
 from typing import List, Optional
 
 log = logging.getLogger(__name__)
-
-# ── コンテンツネタストック（ローテーション） ─────────────────────────────────
 
 TOPICS = [
     "トレチノイン経過報告",
@@ -29,8 +27,6 @@ TOPICS = [
     "スキンケア沼あるある",
     "海外の美容ミームへの反応",
 ]
-
-# ── 投稿タイプ（type名, 重み） ─────────────────────────────────────────────────
 
 POST_TYPES = [
     ("knowledge", 40),
@@ -46,36 +42,31 @@ TYPE_LABELS = {
     "reaction":  "反応系",
 }
 
-# ── 共通ルール ─────────────────────────────────────────────────────────────────
-
 _BASE_RULES = """\
-【ルール】
-・全文日本語で書く（英単語・英文を一切混ぜない）
+【絶対ルール】
+・全文日本語（英単語・英文を一切混ぜない）
 ・一人称・断定口調（「〜だった」「〜してる」。「〜らしい」「〜かも」禁止）
-・1ポストに伝えることは1つだけ。複数の話題・出来事を1ポストに詰め込まない
-・1つの文章の流れで完結させる（「〜した、〜だった。〜に気づいた」のような話題転換NG）
+・1ポストに伝えることは1つだけ
 ・数字を必ず1つ入れる（期間・回数・金額・濃度など）
 ・説明調・おすすめ口調禁止（「〜してみてください」「〜をおすすめします」NG）
 ・ハッシュタグは0〜2個
 ・宣伝・アフィリエイト臭NG
-・前置きや「」の括りは不要
-・「〜なあ」「〜んだなあ」などの間延びした語尾禁止
-・回数・頻度の表現は具体的に（「毎朝1回」「週3回」など。「毎朝2回」のような非常識な頻度はNG）
-・ネガティブな結果で終わらない。必ず学び・気づき・次の行動で締める
-・施術・治療系の動詞：「レーザーをやった」はNG。「レーザーを受けた」「クリニックに行った」を使う
-・量の表現：濃度・使い方で表現する（「ハイドロキノン4%を毎朝塗って」）
-・治療薬・美容成分は必ず日本語表記（「Retinol」→「レチノール」、「blemish」→「シミ」など）
+・ネガティブで終わらない。学び・気づき・次の行動で締める
+・施術系の動詞：「レーザーを受けた」「クリニックに行った」（「やった」NG）
+・治療薬・成分は日本語表記（「Retinol」→「レチノール」）
+
+【良い例】
+・「トレチノインを2ヶ月使って、ようやく赤みが落ち着いてきた。最初の1ヶ月が一番しんどかった。」
+・「サリチル酸20%のピーリングを3回試して、毛穴の黒ずみが目に見えて減った。痛みゼロなのが続けられてる理由。」
+・「ハイドロキノン4%を朝だけ塗って1ヶ月。シミが薄くなってきてる実感がある。」
 
 【NGサンプル（絶対に出力しない）】
-・「無理したスキンケアで肌をダメージした、ハイドロキノンを塗ってシミが軽減された、10年かかった」→ 3つの話題が混在
-・「2ヶ月続けても変化なし。」→ ネガティブで終わっている（学びで締めること）
-・「1ヶ月でコスパに気づいた」のみ → 短すぎる・内容が薄い
+・「サリチル酸ピーリングが皮膚の老化細胞を除去して肌を若返らせた。」→ 説明口調・主語が自分でない
+・「2ヶ月続けても変化なし。」→ ネガティブで終わっている
 ・「毎朝2回塗った」→ 非常識な頻度
-・英単語・英文を混入させる
+・英単語を混入させる
 
-投稿テキストのみ出力してください。"""
-
-# ── プロンプトテンプレート ─────────────────────────────────────────────────────
+投稿テキストのみ出力してください。前置き・説明・括りは不要。"""
 
 PROMPT_KNOWLEDGE = """\
 29歳男性・スキンケアマニアとしてXに投稿する。
@@ -94,7 +85,7 @@ PROMPT_EXPERIENCE = """\
 
 テーマ: {topic}
 起点: {variation}
-トーン: ゆるい・正直・感情あり（成功も失敗も書く）
+トーン: ゆるい・正直・感情あり
 構成: 体験談を日本語でさらっと1〜3文
 文字数: 80〜140文字
 ハッシュタグ: 0〜2個
@@ -119,7 +110,7 @@ PROMPT_REACTION = """\
 テーマ: {topic}
 起点: {variation}
 トーン: カジュアル・正直・ユーモアあり
-構成: 1〜2文。日本語でも英語でも混在でもOK
+構成: 1〜2文。日本語のみ
 文字数: 40〜100文字
 ハッシュタグ: 0〜1個
 
@@ -131,8 +122,6 @@ PROMPT_MAP = {
     "empathy":   PROMPT_EMPATHY,
     "reaction":  PROMPT_REACTION,
 }
-
-# ── バリエーションヒント（毎回異なる発想の起点にする） ──────────────────────────
 
 _VARIATION_POOL = [
     "朝のルーティンで気づいたこと",
@@ -152,23 +141,13 @@ _VARIATION_POOL = [
     "SNSでよく見る誤解",
 ]
 
-# ── フォールバック ─────────────────────────────────────────────────────────────
-
 _FALLBACKS = {
-    "knowledge": (
-        "トレチノインを使い始めて最初の2週間、肌が荒れるのは正常。これ知らなくて辞める人が多すぎる。\n"
-        'The "purging phase" is real — give it 4-6 weeks before judging results.'
-    ),
-    "experience": (
-        "レーザー4回目終わった。シミが薄くなってきてるのは確かだけど、ダウンタイムの赤みがしんどい。"
-        "美容は我慢と投資だなと毎回思う。"
-    ),
-    "empathy":  "spending more on skincare than on food and feeling zero regret about it",
-    "reaction": "海外の美容界隈、成分オタクが多くて逆に安心する。日本ももっとこうなってほしい。",
+    "knowledge":  "トレチノインを使い始めて最初の2週間、肌が荒れるのは正常。知らなくて辞める人が多すぎる。",
+    "experience": "レーザー4回目終わった。シミが薄くなってきてるのは確かだけど、ダウンタイムの赤みがしんどい。美容は我慢と投資だなと毎回思う。",
+    "empathy":    "スキンケアに月1万使って、食費より高くなってることに気づいた。後悔はゼロ。",
+    "reaction":   "海外の美容界隈、成分オタクが多くて逆に安心する。日本ももっとこうなってほしい。",
 }
 
-
-# ── ヘルパー ───────────────────────────────────────────────────────────────────
 
 def _pick_post_type() -> str:
     types, weights = zip(*POST_TYPES)
@@ -176,44 +155,30 @@ def _pick_post_type() -> str:
 
 
 def _pick_topics(n: int) -> List[str]:
-    """連続しないようにシャッフルして n 個返す"""
     pool = TOPICS[:]
     random.shuffle(pool)
-    # n > len(pool) の場合はラップアラウンド（ただし隣接は避ける）
     result = []
     for i in range(n):
         result.append(pool[i % len(pool)])
     return result
 
 
-# ── メイン関数 ────────────────────────────────────────────────────────────────
-
 def generate_drafts(
     count: int = 4,
     api_key: Optional[str] = None,
 ) -> List[dict]:
-    """
-    X用投稿下書きを count 本生成する。
-
-    Args:
-        count:   生成本数（3〜5推奨）
-        api_key: Gemini API キー（省略時は GEMINI_API_KEY 環境変数）
-
-    Returns:
-        List of {"type": str, "label": str, "text": str}
-    """
     try:
-        from groq import Groq
+        import anthropic
     except ImportError:
-        log.error("groq 未インストール: pip install groq")
+        log.error("anthropic 未インストール: pip install anthropic")
         return []
 
-    key = api_key or os.environ.get("GROQ_API_KEY", "")
+    key = api_key or os.environ.get("ANTHROPIC_API_KEY", "")
     if not key:
-        log.error("GROQ_API_KEY が設定されていません")
+        log.error("ANTHROPIC_API_KEY が設定されていません")
         return []
 
-    client = Groq(api_key=key)
+    client = anthropic.Anthropic(api_key=key)
 
     topics = _pick_topics(count)
     drafts = []
@@ -225,11 +190,12 @@ def generate_drafts(
         prompt    = PROMPT_MAP[post_type].format(topic=topic, variation=variation)
 
         try:
-            response = client.chat.completions.create(
-                model="llama-3.3-70b-versatile",
+            response = client.messages.create(
+                model="claude-haiku-4-5-20251001",
+                max_tokens=300,
                 messages=[{"role": "user", "content": prompt}],
             )
-            text = response.choices[0].message.content.strip()
+            text = response.content[0].text.strip()
             log.info(f"生成完了 [{i+1}/{count}] type={post_type} topic={topic} / {len(text)}文字")
             drafts.append({
                 "type":  post_type,
@@ -237,7 +203,7 @@ def generate_drafts(
                 "text":  text,
             })
         except Exception as e:
-            log.error(f"Gemini API エラー [{i+1}/{count}]: {e}")
+            log.error(f"API エラー [{i+1}/{count}]: {e}")
             drafts.append({
                 "type":  post_type,
                 "label": TYPE_LABELS[post_type],
