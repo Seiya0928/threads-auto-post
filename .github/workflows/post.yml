@@ -3,6 +3,7 @@ name: Threads 自動投稿
 on:
   schedule:
     - cron: '30 22 * * *'   # 07:30 JST（朝の準備時間）
+    - cron: '30 3 * * *'    # 12:30 JST（昼）
     - cron: '30 12 * * *'   # 21:30 JST（夜のゴールデンタイム）
   workflow_dispatch:         # 手動実行（テスト用）
 
