@@ -108,24 +108,22 @@ def update_metrics(entries: list, client) -> list:
 def choose_style(entries: list) -> str:
     """
     A/Bテストの結果から投稿スタイルを選ぶ。
-    データが少ない場合は50/50。勝ちスタイルが30%以上リードしたら80%で採用。
+    両スタイルそれぞれ最低6件のデータが揃うまでは50/50。
+    揃ってから勝ちスタイルが30%以上リードしたら80%で採用。
     """
     measured = [e for e in entries if e.get("views") is not None]
-    if len(measured) < 6:
+
+    list_data = [e for e in measured if e.get("style") == "list" and e.get("views", 0) > 0]
+    para_data = [e for e in measured if e.get("style") == "paragraph" and e.get("views", 0) > 0]
+
+    if len(list_data) < 6 or len(para_data) < 6:
         style = random.choice(["list", "paragraph"])
-        log.info(f"A/Bテスト: データ不足のためランダム選択 → {style}")
+        log.info(f"A/Bテスト: データ不足（list={len(list_data)}件 para={len(para_data)}件）→ ランダム選択 {style}")
         return style
 
-    def avg_views(s):
-        vals = [e["views"] for e in measured if e.get("style") == s and e["views"] > 0]
-        return sum(vals) / len(vals) if vals else 0
-
-    avg_list = avg_views("list")
-    avg_para = avg_views("paragraph")
+    avg_list = sum(e["views"] for e in list_data) / len(list_data)
+    avg_para = sum(e["views"] for e in para_data) / len(para_data)
     log.info(f"A/Bテスト: list avg_views={avg_list:.1f} / paragraph avg_views={avg_para:.1f}")
-
-    if avg_list == 0 and avg_para == 0:
-        return random.choice(["list", "paragraph"])
 
     if avg_list > avg_para * 1.3:
         style = "list" if random.random() < 0.8 else "paragraph"
