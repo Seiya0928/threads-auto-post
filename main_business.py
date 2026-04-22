@@ -112,18 +112,15 @@ def main():
         sys.exit(0)
 
     # コンテンツ生成
-    from src.business.content_generator import generate_post
-    from src.business.content_generator import FALLBACK_POSTS as BUSINESS_FALLBACK
+    from src.business.content_generator import generate_post, get_fallback_post
 
-    body = None
+    full_text = None
     if groq_key:
-        body = generate_post(slot=slot, api_key=groq_key)
+        full_text = generate_post(slot=slot, api_key=groq_key)
 
-    if not body:
+    if not full_text:
         log.warning("生成失敗 → フォールバックテキストを使用")
-        body = random.choice(BUSINESS_FALLBACK)
-
-    full_text = build_full_text(body, slot)
+        full_text = get_fallback_post()
     log.info(f"投稿テキスト ({len(full_text)}文字):\n{full_text}")
 
     # 投稿

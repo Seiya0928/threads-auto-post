@@ -1,159 +1,195 @@
 """
-business/content_generator.py — ビジネス・AI副業アカウント用コンテンツ生成
+business/content_generator.py — @claude_1706 収益化版コンテンツ生成
 
-キャラクター: AI副業に挑戦中の等身大の人間
-トーン:      試行錯誤のリアルさ + 具体的なツール紹介の組み合わせ
-ターゲット:  AIで何か始めたいけどまだ形になっていない人
-方針:        上から目線NG。一緒に模索している雰囲気で。
+投稿比率: 情報提供4本 : アフィリ1本（5投稿サイクル）
+パターン:
+  A: Claude Code Tips系
+  B: 失敗談・リアル系
+  C: 具体的な自動化手順系
+  D: 等身大の感想系
+  E: アフィリ（クラウドソーシング系）
+  F: アフィリ（フリーランスエージェント系）
+
+シャドウバン回避:
+  - アフィリリンクは5投稿に1本のみ
+  - ハッシュタグは3つまで、同じ組み合わせ連続禁止
+  - 誇大表現・上から目線禁止
 """
 
+import json
 import logging
 import os
 import random
+from pathlib import Path
 from typing import Optional
 
 log = logging.getLogger(__name__)
 
-# ── スロット別設定 ────────────────────────────────────────────────────────────
+# ── 投稿サイクル管理 ─────────────────────────────────────────────────────────
 
-SLOT_CONFIG = {
-    "morning": {
-        "role": "今日やることを決める朝の投稿。自分への宣言 or 昨日の小さな気づき",
-        "tone": "「よし、やるか」という前向きさ。ただし盛らない。等身大で。",
-        "hooks": [
-            "昨日、{tool}を初めて触ってみた話",
-            "AI副業を始めて{period}経った正直な感想",
-            "今日やること、宣言しておく",
-            "{tool}を使ったら{time}かかってた作業が{short_time}で終わった",
-            "朝イチで気づいた、自動化の盲点",
-        ],
-    },
-    "noon": {
-        "role": "具体的なツール紹介 or 失敗談の暴露。昼に流し読みされることを意識",
-        "tone": "「これ俺もやってた」と共感されるリアルさ。失敗も隠さない。",
-        "hooks": [
-            "正直に言うと、{tool}を使っても最初は全然うまくいかなかった",
-            "【実験中】{method}を試してみた結果",
-            "AI副業で失敗する人の共通点、自分がそれだったと気づいた話",
-            "{tool}の使い方、誰も教えてくれなかった{n}つのこと",
-            "やってみてわかった、{topic}の現実",
-        ],
-    },
-    "evening": {
-        "role": "今日の進捗報告 or 具体的な手順の共有。夜に腰を据えて読まれる",
-        "tone": "具体的な数字・ツール名・手順を出す。ただし成功自慢にならないように。",
-        "hooks": [
-            "今日やったこと、正直に報告する",
-            "【手順メモ】{tool}で{task}を自動化した方法",
-            "月{amount}を目標に動いてる、今の進捗",
-            "{tool}×{tool2}の組み合わせが思ったより使えた話",
-            "夜にやってみてほしい、{topic}の最初の一歩",
-        ],
-    },
-}
+_CYCLE_FILE = Path(__file__).parent.parent.parent / "data" / "business_cycle.json"
 
-# ── フック変数プール ──────────────────────────────────────────────────────────
+def _load_cycle() -> dict:
+    if _CYCLE_FILE.exists():
+        try:
+            return json.loads(_CYCLE_FILE.read_text())
+        except Exception:
+            pass
+    return {"count": 0, "last_pattern": ""}
 
-HOOK_VARS = {
-    "tool":       ["Claude Code", "Gemini API", "GitHub Actions", "Threads API",
-                   "A8.net", "CapCut", "Canva", "Notion AI", "ChatGPT"],
-    "tool2":      ["GitHub Actions", "Gemini API", "Google Trends", "Canva"],
-    "method":     ["Threads自動投稿", "アフィリエイト×SNS", "AI記事生成", "自動リサーチ"],
-    "topic":      ["SNS自動化", "AI副業", "アフィリエイト", "コンテンツ量産"],
-    "task":       ["投稿生成", "トレンドリサーチ", "ハッシュタグ選定", "コンテンツ作成"],
-    "period":     ["1週間", "2週間", "1ヶ月"],
-    "time":       ["2時間", "30分", "1時間"],
-    "short_time": ["5分", "10分", "15分"],
-    "amount":     ["3万円", "5万円", "10万円"],
-    "n":          ["3", "4", "5"],
-}
+def _save_cycle(data: dict) -> None:
+    _CYCLE_FILE.parent.mkdir(exist_ok=True)
+    _CYCLE_FILE.write_text(json.dumps(data, ensure_ascii=False, indent=2))
 
-# ── CTA プール ────────────────────────────────────────────────────────────────
+def _get_next_pattern() -> str:
+    """5投稿サイクルでパターンを決定。5本目のみアフィリ（E or F）。"""
+    cycle = _load_cycle()
+    count = cycle.get("count", 0)
+    pos = count % 5  # 0〜3: 情報提供、4: アフィリ
 
-CTA_POOL = [
-    "同じように試してる人いる？",
-    "うまくいったら報告します。",
-    "もっといい方法あったら教えてほしい。",
-    "これ知ってた人いたらもっと早く教えてほしかった。",
-    "失敗した人いたら一緒に考えたい。",
-    "やり方間違えてたら遠慮なく突っ込んでください。",
-    "同じとこで詰まった人いたら教えて。",
-    "続きはまた報告する。",
+    if pos == 4:
+        pattern = random.choice(["E", "F"])
+    else:
+        # A/B/C/Dを均等ローテ（連続しないように）
+        last = cycle.get("last_pattern", "")
+        choices = [p for p in ["A", "B", "C", "D"] if p != last]
+        pattern = random.choice(choices)
+
+    cycle["count"] = count + 1
+    cycle["last_pattern"] = pattern
+    _save_cycle(cycle)
+    return pattern
+
+# ── ハッシュタグ ──────────────────────────────────────────────────────────────
+
+HASHTAG_SETS = [
+    "#副業 #AI活用 #朝活",
+    "#副業収入 #自動化 #AI副業",
+    "#フリーランス #在宅ワーク #副業",
+    "#AI活用 #副業 #自動化",
+    "#エンジニア #AI副業 #副業収入",
+    "#朝活 #副業 #AI活用",
 ]
+
+_LAST_HASHTAG_FILE = Path(__file__).parent.parent.parent / "data" / "business_last_hashtag.json"
+
+def _get_hashtags() -> str:
+    last = ""
+    if _LAST_HASHTAG_FILE.exists():
+        try:
+            last = json.loads(_LAST_HASHTAG_FILE.read_text()).get("last", "")
+        except Exception:
+            pass
+    choices = [h for h in HASHTAG_SETS if h != last]
+    chosen = random.choice(choices)
+    _LAST_HASHTAG_FILE.parent.mkdir(exist_ok=True)
+    _LAST_HASHTAG_FILE.write_text(json.dumps({"last": chosen}, ensure_ascii=False))
+    return chosen
 
 # ── フォールバック投稿 ────────────────────────────────────────────────────────
 
-FALLBACK_POSTS = [
-    "AIツール使い始めて気づいたこと。学習コストより、とりあえず動かすコストの方が低い。完璧に理解してから使おうとすると永遠に始まらない。#AI活用 #副業",
-    "自動化の仕組みを1個作ると、次が作りやすくなる感覚がある。スキルじゃなくて思考回路が変わる感じ。同じ感覚の人いる？#AI副業 #生産性向上",
-    "ChatGPTとClaude、用途で使い分けてる。コード書かせるならClaude、壁打ちにはどっちでも。正解はまだわからん。#AI #副業",
-    "ビジネス系の情報、発信者が成功者すぎて参考にならないことがある。自分はまだ途中なので、途中の話をする。#副業 #リアル",
-]
+FALLBACK_POSTS = {
+    "A": "Claude Codeで知って衝撃だったやつ\n\n/compact コマンドで会話を要約してくれる\n長いセッションでもコンテキスト溢れない\n\n最初これ知らなくて、毎回新規セッション立ち上げて\n同じこと説明してた時間返してほしい",
+    "B": "AI副業始めて気づいたこと\n\n「Claude Codeが全部やってくれる」は嘘\n正確には「Claude Codeに的確に指示できる人が勝つ」\n\n最初の3週間、指示がぼんやりすぎて\n何回もやり直しさせてた。これ自分の問題だった",
+    "C": "Threads自動投稿、無料で動いてる構成\n\n・Groq API（llama-3.3-70b）で本文生成\n・GitHub Actionsで定時実行\n・Threads Graph APIで投稿\n\nGemini無料枠429エラーで詰んで\nGroqに逃げたらむしろ速くて安定した",
+    "D": "AI副業8週間経過の正直なとこ\n\n・収益：まだ0円\n・作ったもの：Webアプリ2つ、自動投稿システム2つ\n・スキル：明らかに上がってる\n・焦り：ある\n\n「稼げる」の前に「作れる」を先に積んでる感覚\nここが抜けると続かない気がしてる",
+}
 
+# ── プロンプト定義 ─────────────────────────────────────────────────────────────
 
-# ── フック組み立て ────────────────────────────────────────────────────────────
+PATTERN_PROMPTS = {
+    "A": """\
+「Claude Codeで知って衝撃だったやつ」という書き出しで始めて、
+具体的なClaude Codeのコマンドや機能を1つ取り上げ、
+知らなかった頃の自分の失敗談と組み合わせて投稿を書いてください。
 
-def _build_hook(slot: str) -> str:
-    config = SLOT_CONFIG.get(slot, SLOT_CONFIG["evening"])
-    template = random.choice(config["hooks"])
-    try:
-        filled = template.format(**{k: random.choice(v) for k, v in HOOK_VARS.items()})
-    except KeyError:
-        filled = template
-    return filled
+ルール:
+・一人称は「自分」か主語省略
+・上から目線NG。等身大で。
+・具体的な機能名・コマンドを必ず含める
+・150〜280文字（ハッシュタグ除く）
+・ハッシュタグは書かない（別途付与します）
+・投稿テキストのみ出力してください""",
 
+    "B": """\
+「AI副業始めて気づいたこと」という書き出しで始めて、
+逆張り気味の気づきと等身大の失敗談で共感を誘う投稿を書いてください。
 
-# ── プロンプト組み立て ────────────────────────────────────────────────────────
+ルール:
+・一人称は「自分」か主語省略
+・「絶対稼げる」「簡単に」などの誇大表現禁止
+・失敗を隠さない。ただし前向きな着地
+・150〜280文字（ハッシュタグ除く）
+・ハッシュタグは書かない（別途付与します）
+・投稿テキストのみ出力してください""",
 
-def _build_prompt(slot: str, hook: str, cta: str) -> str:
-    config = SLOT_CONFIG.get(slot, SLOT_CONFIG["evening"])
-    return f"""\
-あなたは「AIで副業を始めたばかりの普通の人間」として発信しています。
-まだ大きな成果は出ていないけど、毎日試行錯誤している等身大のキャラクターです。
+    "C": """\
+具体的なAI自動化の構成やスタックを紹介する投稿を書いてください。
 
-【この投稿の役割】{config["role"]}
-【トーン】{config["tone"]}
+構成例（参考）:
+・使ったツール名を箇条書き
+・つまずいたポイント
+・結果どうなったか
 
-【絶対にやってはいけないこと】
-・成功者ぶる（「月〇〇万達成」のような断言はしない）
-・抽象的なアドバイス（「行動が大事です」は禁止）
-・上から目線（「〜すべき」「〜しなさい」は禁止）
-・嘘の数字（実際に試したことだけを書く）
+ルール:
+・一人称は「自分」か主語省略
+・実在するツール名（GitHub Actions, Groq, Threads API等）を使う
+・150〜280文字（ハッシュタグ除く）
+・ハッシュタグは書かない（別途付与します）
+・投稿テキストのみ出力してください""",
 
-【必ず含めること】
-・具体的なツール名、数字、または手順を1つ以上
-・読んだ人が「自分もやってみようかな」と思える一歩
+    "D": """\
+「AI副業X週間経過の正直なとこ」という形式で、
+数字で現在地を晒す進捗報告投稿を書いてください。
 
-【文体ルール】
-・話し言葉に近い自然な文体
-・絵文字は0〜1個まで
-・150〜280文字（ハッシュタグ含めない）
+含める要素:
+・収益（0円でも正直に）
+・作ったもの（具体的に）
+・スキルの変化
+・正直な感情
 
-1行目（そのまま使う）:
-{hook}
+ルール:
+・強がらない。ただし前向き
+・150〜280文字（ハッシュタグ除く）
+・ハッシュタグは書かない（別途付与します）
+・投稿テキストのみ出力してください""",
 
-末尾（そのまま使う）:
-{cta}
+    "E": """\
+クラウドワークスでAI・自動化系の案件を探したという体験談から、
+自然にクラウドワークスへの登録を勧める投稿を書いてください。
 
-投稿テキストのみ出力してください。前置き・説明・括りは一切不要です。"""
+ルール:
+・自分の行動起点から始める
+・「案件があった」という発見の形式
+・ソフトな誘導（押しつけない）
+・末尾に「👉 {AFFILIATE_URL}」を含める
+・200〜350文字（ハッシュタグ除く）
+・ハッシュタグは書かない（別途付与します）
+・投稿テキストのみ出力してください""",
 
+    "F": """\
+AIエンジニア・LLM活用人材の需要が高いという市場情報から、
+自然にレバテックフリーランスへの登録を勧める投稿を書いてください。
+
+含める要素:
+・具体的な月収目安（月60〜80万など）
+・「登録だけでも相場感がわかる」という実利
+・末尾に「👉 {AFFILIATE_URL}」を含める
+
+ルール:
+・市場の事実として伝える（成功保証しない）
+・200〜350文字（ハッシュタグ除く）
+・ハッシュタグは書かない（別途付与します）
+・投稿テキストのみ出力してください""",
+}
 
 # ── メイン関数 ────────────────────────────────────────────────────────────────
 
 def generate_post(
     slot: str,
     api_key: Optional[str] = None,
+    affiliate_url: Optional[str] = None,
 ) -> Optional[str]:
-    """
-    Groq API でビジネス・AI副業系の投稿テキストを生成する。
-
-    Args:
-        slot:    "morning" | "noon" | "evening"
-        api_key: Groq API キー（省略時は GROQ_API_KEY 環境変数）
-
-    Returns:
-        生成された投稿テキスト。失敗時は None。
-    """
     try:
         from groq import Groq
     except ImportError:
@@ -165,19 +201,31 @@ def generate_post(
         log.error("GROQ_API_KEY が設定されていません")
         return None
 
-    hook   = _build_hook(slot)
-    cta    = random.choice(CTA_POOL)
-    prompt = _build_prompt(slot, hook, cta)
+    pattern = _get_next_pattern()
+    log.info(f"投稿パターン: {pattern}")
+
+    prompt = PATTERN_PROMPTS[pattern]
+    aff_url = affiliate_url or os.environ.get("BUSINESS_AFFILIATE_URL", "[プロフィールリンクから]")
+    prompt = prompt.replace("{AFFILIATE_URL}", aff_url)
+
+    hashtags = _get_hashtags()
 
     try:
-        client   = Groq(api_key=key)
+        client = Groq(api_key=key)
         response = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
             messages=[{"role": "user", "content": prompt}],
         )
-        text = response.choices[0].message.content.strip()
-        log.info(f"Groq生成完了: {len(text)}文字 / slot={slot}")
+        body = response.choices[0].message.content.strip()
+        text = f"{body}\n\n{hashtags}"
+        log.info(f"Groq生成完了: {len(text)}文字 / slot={slot} / pattern={pattern}")
         return text
     except Exception as e:
         log.error(f"Groq API エラー: {e}")
         return None
+
+
+def get_fallback_post() -> str:
+    pattern = random.choice(list(FALLBACK_POSTS.keys()))
+    hashtags = _get_hashtags()
+    return f"{FALLBACK_POSTS[pattern]}\n\n{hashtags}"
