@@ -7,8 +7,8 @@ business/content_generator.py — @claude_1706 収益化版コンテンツ生成
   B: 失敗談・リアル系
   C: 具体的な自動化手順系
   D: 等身大の感想系
-  E: アフィリ（クラウドソーシング系）
-  F: アフィリ（フリーランスエージェント系）
+  E: アフィリ（ココナラ）← 朝8時台
+  F: アフィリ（Midworks）← 夜22時台
 
 シャドウバン回避:
   - アフィリリンクは5投稿に1本のみ
@@ -20,10 +20,26 @@ import json
 import logging
 import os
 import random
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
+from zoneinfo import ZoneInfo
 
 log = logging.getLogger(__name__)
+
+JST = ZoneInfo("Asia/Tokyo")
+
+
+# ── 時刻でアフィリ案件を選択 ─────────────────────────────────────────────────
+
+def _get_affiliate_pattern() -> str:
+    """朝8時台 → E（ココナラ）、それ以外（夜22時台など） → F（Midworks）"""
+    hour = datetime.now(JST).hour
+    if 7 <= hour < 11:
+        return "E"
+    else:
+        return "F"
+
 
 # ── 投稿サイクル管理 ─────────────────────────────────────────────────────────
 
@@ -48,9 +64,8 @@ def _get_next_pattern() -> str:
     pos = count % 5  # 0〜3: 情報提供、4: アフィリ
 
     if pos == 4:
-        pattern = random.choice(["E", "F"])
+        pattern = _get_affiliate_pattern()
     else:
-        # A/B/C/Dを均等ローテ（連続しないように）
         last = cycle.get("last_pattern", "")
         choices = [p for p in ["A", "B", "C", "D"] if p != last]
         pattern = random.choice(choices)
@@ -59,6 +74,7 @@ def _get_next_pattern() -> str:
     cycle["last_pattern"] = pattern
     _save_cycle(cycle)
     return pattern
+
 
 # ── ハッシュタグ ──────────────────────────────────────────────────────────────
 
@@ -86,6 +102,7 @@ def _get_hashtags() -> str:
     _LAST_HASHTAG_FILE.write_text(json.dumps({"last": chosen}, ensure_ascii=False))
     return chosen
 
+
 # ── フォールバック投稿 ────────────────────────────────────────────────────────
 
 FALLBACK_POSTS = {
@@ -93,7 +110,10 @@ FALLBACK_POSTS = {
     "B": "AI副業始めて気づいたこと\n\n「Claude Codeが全部やってくれる」は嘘\n正確には「Claude Codeに的確に指示できる人が勝つ」\n\n最初の3週間、指示がぼんやりすぎて\n何回もやり直しさせてた。これ自分の問題だった",
     "C": "Threads自動投稿、無料で動いてる構成\n\n・Groq API（llama-3.3-70b）で本文生成\n・GitHub Actionsで定時実行\n・Threads Graph APIで投稿\n\nGemini無料枠429エラーで詰んで\nGroqに逃げたらむしろ速くて安定した",
     "D": "AI副業8週間経過の正直なとこ\n\n・収益：まだ0円\n・作ったもの：Webアプリ2つ、自動投稿システム2つ\n・スキル：明らかに上がってる\n・焦り：ある\n\n「稼げる」の前に「作れる」を先に積んでる感覚\nここが抜けると続かない気がしてる",
+    "E": "Claude Codeで作ったシステム、売れるか試してる\n\nココナラで「AI自動化」「プロンプト設計」系の出品見たら\n個人でもちゃんと売れてる。登録無料で出品もできる\n\nまずは案件眺めるだけでも相場感つかめる\n👉 {COCONALA_AFFILIATE_URL}\n\n#副業 #AI活用 #在宅ワーク",
+    "F": "AIエンジニア、本気で足りてないらしい\n\nMidworksの案件一覧見たら\nPython × LLM案件で月80万〜普通にある\nClaude API使える人材、超需要ある\n\n経験浅くても登録だけしておくと\n相場感わかって副業の値付けにも使える\n👉 {MIDWORKS_AFFILIATE_URL}\n\n#フリーランス #AI副業 #エンジニア",
 }
+
 
 # ── プロンプト定義 ─────────────────────────────────────────────────────────────
 
@@ -155,26 +175,27 @@ PATTERN_PROMPTS = {
 ・投稿テキストのみ出力してください""",
 
     "E": """\
-クラウドワークスでAI・自動化系の案件を探したという体験談から、
-自然にクラウドワークスへの登録を勧める投稿を書いてください。
+ココナラでAI・自動化系のスキル販売を眺めた体験談から、
+自然にココナラへの登録を勧める投稿を書いてください。
 
 ルール:
-・自分の行動起点から始める
-・「案件があった」という発見の形式
+・自分の行動起点から始める（「試してる」「眺めてみた」など）
+・「個人でも売れてる」という発見の形式
+・登録と出品が無料という事実を含める
 ・ソフトな誘導（押しつけない）
-・末尾に「👉 {AFFILIATE_URL}」を含める
+・末尾に「👉 {COCONALA_AFFILIATE_URL}」を含める
 ・200〜350文字（ハッシュタグ除く）
 ・ハッシュタグは書かない（別途付与します）
 ・投稿テキストのみ出力してください""",
 
     "F": """\
 AIエンジニア・LLM活用人材の需要が高いという市場情報から、
-自然にレバテックフリーランスへの登録を勧める投稿を書いてください。
+自然にMidworksへの登録を勧める投稿を書いてください。
 
 含める要素:
-・具体的な月収目安（月60〜80万など）
+・Python × LLM案件の具体的な月収目安（月80万〜など）
 ・「登録だけでも相場感がわかる」という実利
-・末尾に「👉 {AFFILIATE_URL}」を含める
+・末尾に「👉 {MIDWORKS_AFFILIATE_URL}」を含める
 
 ルール:
 ・市場の事実として伝える（成功保証しない）
@@ -182,6 +203,7 @@ AIエンジニア・LLM活用人材の需要が高いという市場情報から
 ・ハッシュタグは書かない（別途付与します）
 ・投稿テキストのみ出力してください""",
 }
+
 
 # ── メイン関数 ────────────────────────────────────────────────────────────────
 
@@ -201,12 +223,15 @@ def generate_post(
         log.error("GROQ_API_KEY が設定されていません")
         return None
 
+    coconala_url = os.environ.get("COCONALA_AFFILIATE_URL", "[ココナラはプロフィールリンクから]")
+    midworks_url = os.environ.get("MIDWORKS_AFFILIATE_URL", "[Midworksはプロフィールリンクから]")
+
     pattern = _get_next_pattern()
-    log.info(f"投稿パターン: {pattern}")
+    log.info(f"投稿パターン: {pattern} (JST {datetime.now(JST).strftime('%H:%M')})")
 
     prompt = PATTERN_PROMPTS[pattern]
-    aff_url = affiliate_url or os.environ.get("BUSINESS_AFFILIATE_URL", "[プロフィールリンクから]")
-    prompt = prompt.replace("{AFFILIATE_URL}", aff_url)
+    prompt = prompt.replace("{COCONALA_AFFILIATE_URL}", coconala_url)
+    prompt = prompt.replace("{MIDWORKS_AFFILIATE_URL}", midworks_url)
 
     hashtags = _get_hashtags()
 
@@ -227,5 +252,42 @@ def generate_post(
 
 def get_fallback_post() -> str:
     pattern = random.choice(list(FALLBACK_POSTS.keys()))
+    coconala_url = os.environ.get("COCONALA_AFFILIATE_URL", "[ココナラはプロフィールリンクから]")
+    midworks_url = os.environ.get("MIDWORKS_AFFILIATE_URL", "[Midworksはプロフィールリンクから]")
+    body = FALLBACK_POSTS[pattern]
+    body = body.replace("{COCONALA_AFFILIATE_URL}", coconala_url)
+    body = body.replace("{MIDWORKS_AFFILIATE_URL}", midworks_url)
+    # E/Fはハッシュタグ内蔵なので追加しない
+    if pattern in ("E", "F"):
+        return body
     hashtags = _get_hashtags()
-    return f"{FALLBACK_POSTS[pattern]}\n\n{hashtags}"
+    return f"{body}\n\n{hashtags}"
+
+
+# ── ローカルテスト ─────────────────────────────────────────────────────────────
+
+def _affiliate_pattern_for_hour(hour: int) -> str:
+    """テスト用: 指定した時間でアフィリパターンを返す"""
+    if 7 <= hour < 11:
+        return "E"
+    else:
+        return "F"
+
+if __name__ == "__main__":
+    os.environ.setdefault("COCONALA_AFFILIATE_URL", "https://coconala.example.com/?ref=test")
+    os.environ.setdefault("MIDWORKS_AFFILIATE_URL", "https://midworks.example.com/?ref=test")
+
+    coconala_url = os.environ["COCONALA_AFFILIATE_URL"]
+    midworks_url = os.environ["MIDWORKS_AFFILIATE_URL"]
+
+    for label, hour, expected in [("朝8時", 8, "E"), ("夜22時", 22, "F")]:
+        pattern = _affiliate_pattern_for_hour(hour)
+        ok = "✅" if pattern == expected else "❌"
+        print("=" * 60)
+        print(f"【{label}シミュレーション → {'ココナラ（E）' if expected == 'E' else 'Midworks（F）'}期待】 {ok}")
+        print("=" * 60)
+        body = FALLBACK_POSTS[pattern]
+        body = body.replace("{COCONALA_AFFILIATE_URL}", coconala_url)
+        body = body.replace("{MIDWORKS_AFFILIATE_URL}", midworks_url)
+        print(body)
+        print()
