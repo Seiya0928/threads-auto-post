@@ -1,17 +1,13 @@
 """
 business/content_generator.py — @claude_1706 収益化版コンテンツ生成
 
-投稿比率: 情報提供4本 : アフィリ1本（5投稿サイクル）
-パターン:
-  A: Claude Code Tips系
-  B: 失敗談・リアル系
-  C: 具体的な自動化手順系
-  D: 等身大の感想系
-  E: アフィリ（ココナラ）← 朝8時台
-  F: アフィリ（Midworks）← 夜22時台
+投稿スケジュール: 1日3回（8:00 / 12:00 / 22:00 JST）
+アフィリ振り分け:
+  - 月曜8時 / 金曜8時   → ココナラ（E）
+  - 水曜22時 / 日曜22時  → Midworks（F）
+  - それ以外             → 情報提供 A/B/C/D からランダム
 
 シャドウバン回避:
-  - アフィリリンクは5投稿に1本のみ
   - ハッシュタグは3つまで、同じ組み合わせ連続禁止
   - 誇大表現・上から目線禁止
 """
@@ -30,50 +26,47 @@ log = logging.getLogger(__name__)
 JST = ZoneInfo("Asia/Tokyo")
 
 
-# ── 時刻でアフィリ案件を選択 ─────────────────────────────────────────────────
+# ── 曜日＋時刻でパターン決定 ─────────────────────────────────────────────────
 
-def _get_affiliate_pattern() -> str:
-    """朝8時台 → E（ココナラ）、それ以外（夜22時台など） → F（Midworks）"""
-    hour = datetime.now(JST).hour
-    if 7 <= hour < 11:
+def _get_pattern_for(hour: int, weekday: int) -> str:
+    """
+    曜日＋時刻でパターンを決定。
+    weekday: 月=0, 火=1, 水=2, 木=3, 金=4, 土=5, 日=6
+    """
+    # ココナラ：月曜8時 / 金曜8時
+    if weekday in (0, 4) and hour == 8:
         return "E"
-    else:
+    # Midworks：水曜22時 / 日曜22時
+    elif weekday in (2, 6) and hour == 22:
         return "F"
-
-
-# ── 投稿サイクル管理 ─────────────────────────────────────────────────────────
-
-_CYCLE_FILE = Path(__file__).parent.parent.parent / "data" / "business_cycle.json"
-
-def _load_cycle() -> dict:
-    if _CYCLE_FILE.exists():
-        try:
-            return json.loads(_CYCLE_FILE.read_text())
-        except Exception:
-            pass
-    return {"count": 0, "last_pattern": ""}
-
-def _save_cycle(data: dict) -> None:
-    _CYCLE_FILE.parent.mkdir(exist_ok=True)
-    _CYCLE_FILE.write_text(json.dumps(data, ensure_ascii=False, indent=2))
-
-def _get_next_pattern() -> str:
-    """5投稿サイクルでパターンを決定。5本目のみアフィリ（E or F）。"""
-    cycle = _load_cycle()
-    count = cycle.get("count", 0)
-    pos = count % 5  # 0〜3: 情報提供、4: アフィリ
-
-    if pos == 4:
-        pattern = _get_affiliate_pattern()
+    # それ以外：情報提供 A/B/C/D
     else:
-        last = cycle.get("last_pattern", "")
+        last = _load_last_info_pattern()
         choices = [p for p in ["A", "B", "C", "D"] if p != last]
         pattern = random.choice(choices)
+        _save_last_info_pattern(pattern)
+        return pattern
 
-    cycle["count"] = count + 1
-    cycle["last_pattern"] = pattern
-    _save_cycle(cycle)
-    return pattern
+def _get_next_pattern() -> str:
+    now = datetime.now(JST)
+    return _get_pattern_for(now.hour, now.weekday())
+
+
+# ── 情報投稿の直前パターン管理（連続防止） ────────────────────────────────────
+
+_LAST_INFO_FILE = Path(__file__).parent.parent.parent / "data" / "business_last_info.json"
+
+def _load_last_info_pattern() -> str:
+    if _LAST_INFO_FILE.exists():
+        try:
+            return json.loads(_LAST_INFO_FILE.read_text()).get("last", "")
+        except Exception:
+            pass
+    return ""
+
+def _save_last_info_pattern(pattern: str) -> None:
+    _LAST_INFO_FILE.parent.mkdir(exist_ok=True)
+    _LAST_INFO_FILE.write_text(json.dumps({"last": pattern}, ensure_ascii=False))
 
 
 # ── ハッシュタグ ──────────────────────────────────────────────────────────────
@@ -103,15 +96,26 @@ def _get_hashtags() -> str:
     return chosen
 
 
-# ── フォールバック投稿 ────────────────────────────────────────────────────────
+# ── アフィリ訴求文テンプレート ────────────────────────────────────────────────
 
-FALLBACK_POSTS = {
+COCONALA_TEMPLATES = [
+    "Claude Codeで作ったシステム、売れるか試してる\n\nココナラで「AI自動化」「プロンプト設計」系の出品見たら\n個人でもちゃんと売れてる。登録無料で出品もできる\n\nまずは案件眺めるだけでも相場感つかめる\n👉 {COCONALA_AFFILIATE_URL}\n\n#副業 #AI活用 #在宅ワーク",
+    "副業でAIスキルを売るって、現実的だなと思った\n\nココナラで「ChatGPT活用」「Claude」で検索すると\n個人がちゃんと稼いでる。登録と出品は完全無料\n\n自分のスキルの値付け参考にもなる\n👉 {COCONALA_AFFILIATE_URL}\n\n#副業収入 #AI活用 #スキル販売",
+]
+
+MIDWORKS_TEMPLATES = [
+    "AIエンジニア、本気で足りてないらしい\n\nMidworksの案件一覧見たら\nPython × LLM案件で月80万〜普通にある\nClaude API使える人材、超需要ある\n\n経験浅くても登録だけしておくと\n相場感わかって副業の値付けにも使える\n👉 {MIDWORKS_AFFILIATE_URL}\n\n#フリーランス #AI副業 #エンジニア",
+    "フリーランスエンジニアの単価、思ったより高い\n\nMidworks見てたら\nAI・機械学習案件で月単価80万超がゴロゴロ\n正社員やってるの馬鹿らしくなる水準\n\n安心保証もあるらしいから、独立検討してる人は見る価値あり\n👉 {MIDWORKS_AFFILIATE_URL}\n\n#フリーランス #エンジニア副業 #独立",
+]
+
+
+# ── 情報提供フォールバック ─────────────────────────────────────────────────────
+
+FALLBACK_INFO = {
     "A": "Claude Codeで知って衝撃だったやつ\n\n/compact コマンドで会話を要約してくれる\n長いセッションでもコンテキスト溢れない\n\n最初これ知らなくて、毎回新規セッション立ち上げて\n同じこと説明してた時間返してほしい",
     "B": "AI副業始めて気づいたこと\n\n「Claude Codeが全部やってくれる」は嘘\n正確には「Claude Codeに的確に指示できる人が勝つ」\n\n最初の3週間、指示がぼんやりすぎて\n何回もやり直しさせてた。これ自分の問題だった",
     "C": "Threads自動投稿、無料で動いてる構成\n\n・Groq API（llama-3.3-70b）で本文生成\n・GitHub Actionsで定時実行\n・Threads Graph APIで投稿\n\nGemini無料枠429エラーで詰んで\nGroqに逃げたらむしろ速くて安定した",
     "D": "AI副業8週間経過の正直なとこ\n\n・収益：まだ0円\n・作ったもの：Webアプリ2つ、自動投稿システム2つ\n・スキル：明らかに上がってる\n・焦り：ある\n\n「稼げる」の前に「作れる」を先に積んでる感覚\nここが抜けると続かない気がしてる",
-    "E": "Claude Codeで作ったシステム、売れるか試してる\n\nココナラで「AI自動化」「プロンプト設計」系の出品見たら\n個人でもちゃんと売れてる。登録無料で出品もできる\n\nまずは案件眺めるだけでも相場感つかめる\n👉 {COCONALA_AFFILIATE_URL}\n\n#副業 #AI活用 #在宅ワーク",
-    "F": "AIエンジニア、本気で足りてないらしい\n\nMidworksの案件一覧見たら\nPython × LLM案件で月80万〜普通にある\nClaude API使える人材、超需要ある\n\n経験浅くても登録だけしておくと\n相場感わかって副業の値付けにも使える\n👉 {MIDWORKS_AFFILIATE_URL}\n\n#フリーランス #AI副業 #エンジニア",
 }
 
 
@@ -205,6 +209,14 @@ AIエンジニア・LLM活用人材の需要が高いという市場情報から
 }
 
 
+# ── URL置換ヘルパー ───────────────────────────────────────────────────────────
+
+def _replace_urls(text: str) -> str:
+    coconala_url = os.environ.get("COCONALA_AFFILIATE_URL", "[ココナラはプロフィールリンクから]")
+    midworks_url = os.environ.get("MIDWORKS_AFFILIATE_URL", "[Midworksはプロフィールリンクから]")
+    return text.replace("{COCONALA_AFFILIATE_URL}", coconala_url).replace("{MIDWORKS_AFFILIATE_URL}", midworks_url)
+
+
 # ── メイン関数 ────────────────────────────────────────────────────────────────
 
 def generate_post(
@@ -223,18 +235,15 @@ def generate_post(
         log.error("GROQ_API_KEY が設定されていません")
         return None
 
-    coconala_url = os.environ.get("COCONALA_AFFILIATE_URL", "[ココナラはプロフィールリンクから]")
-    midworks_url = os.environ.get("MIDWORKS_AFFILIATE_URL", "[Midworksはプロフィールリンクから]")
+    now = datetime.now(JST)
+    pattern = _get_pattern_for(now.hour, now.weekday())
+    log.info(f"投稿パターン: {pattern} (JST {now.strftime('%a %H:%M')})")
 
-    pattern = _get_next_pattern()
-    log.info(f"投稿パターン: {pattern} (JST {datetime.now(JST).strftime('%H:%M')})")
-
-    prompt = PATTERN_PROMPTS[pattern]
-    prompt = prompt.replace("{COCONALA_AFFILIATE_URL}", coconala_url)
-    prompt = prompt.replace("{MIDWORKS_AFFILIATE_URL}", midworks_url)
-
+    prompt = _replace_urls(PATTERN_PROMPTS[pattern])
     hashtags = _get_hashtags()
 
+    # アフィリ（E/F）はGroq生成 + ハッシュタグ付与
+    # 情報提供（A-D）も同様
     try:
         client = Groq(api_key=key)
         response = client.chat.completions.create(
@@ -242,6 +251,9 @@ def generate_post(
             messages=[{"role": "user", "content": prompt}],
         )
         body = response.choices[0].message.content.strip()
+        # E/FはURLを展開済みのプロンプトから生成されるが、念のため置換
+        body = _replace_urls(body)
+        # E/Fはハッシュタグ内蔵テンプレートなのでGroq出力にはハッシュタグなし → 付与
         text = f"{body}\n\n{hashtags}"
         log.info(f"Groq生成完了: {len(text)}文字 / slot={slot} / pattern={pattern}")
         return text
@@ -251,43 +263,60 @@ def generate_post(
 
 
 def get_fallback_post() -> str:
-    pattern = random.choice(list(FALLBACK_POSTS.keys()))
-    coconala_url = os.environ.get("COCONALA_AFFILIATE_URL", "[ココナラはプロフィールリンクから]")
-    midworks_url = os.environ.get("MIDWORKS_AFFILIATE_URL", "[Midworksはプロフィールリンクから]")
-    body = FALLBACK_POSTS[pattern]
-    body = body.replace("{COCONALA_AFFILIATE_URL}", coconala_url)
-    body = body.replace("{MIDWORKS_AFFILIATE_URL}", midworks_url)
-    # E/Fはハッシュタグ内蔵なので追加しない
-    if pattern in ("E", "F"):
-        return body
-    hashtags = _get_hashtags()
-    return f"{body}\n\n{hashtags}"
+    now = datetime.now(JST)
+    pattern = _get_pattern_for(now.hour, now.weekday())
+
+    if pattern == "E":
+        body = random.choice(COCONALA_TEMPLATES)
+    elif pattern == "F":
+        body = random.choice(MIDWORKS_TEMPLATES)
+    else:
+        body = FALLBACK_INFO[pattern]
+        hashtags = _get_hashtags()
+        return _replace_urls(f"{body}\n\n{hashtags}")
+
+    return _replace_urls(body)
 
 
 # ── ローカルテスト ─────────────────────────────────────────────────────────────
-
-def _affiliate_pattern_for_hour(hour: int) -> str:
-    """テスト用: 指定した時間でアフィリパターンを返す"""
-    if 7 <= hour < 11:
-        return "E"
-    else:
-        return "F"
 
 if __name__ == "__main__":
     os.environ.setdefault("COCONALA_AFFILIATE_URL", "https://coconala.example.com/?ref=test")
     os.environ.setdefault("MIDWORKS_AFFILIATE_URL", "https://midworks.example.com/?ref=test")
 
-    coconala_url = os.environ["COCONALA_AFFILIATE_URL"]
-    midworks_url = os.environ["MIDWORKS_AFFILIATE_URL"]
+    CASES = [
+        ("月曜8時",   0, 8,  "E", "ココナラ"),
+        ("金曜8時",   4, 8,  "E", "ココナラ"),
+        ("水曜22時",  2, 22, "F", "Midworks"),
+        ("日曜22時",  6, 22, "F", "Midworks"),
+        ("火曜12時",  1, 12, "info", "情報提供"),
+        ("土曜8時",   5, 8,  "info", "情報提供"),
+    ]
 
-    for label, hour, expected in [("朝8時", 8, "E"), ("夜22時", 22, "F")]:
-        pattern = _affiliate_pattern_for_hour(hour)
-        ok = "✅" if pattern == expected else "❌"
-        print("=" * 60)
-        print(f"【{label}シミュレーション → {'ココナラ（E）' if expected == 'E' else 'Midworks（F）'}期待】 {ok}")
-        print("=" * 60)
-        body = FALLBACK_POSTS[pattern]
-        body = body.replace("{COCONALA_AFFILIATE_URL}", coconala_url)
-        body = body.replace("{MIDWORKS_AFFILIATE_URL}", midworks_url)
-        print(body)
+    all_ok = True
+    for label, wd, hr, expected_type, expected_label in CASES:
+        pattern = _get_pattern_for(hr, wd)
+        if expected_type == "E":
+            ok = pattern == "E"
+        elif expected_type == "F":
+            ok = pattern == "F"
+        else:
+            ok = pattern in ("A", "B", "C", "D")
+
+        mark = "✅" if ok else "❌"
+        if not ok:
+            all_ok = False
+        print(f"{mark} {label} → パターン:{pattern} （期待:{expected_label}）")
+
+        # 投稿内容プレビュー
+        if pattern == "E":
+            body = random.choice(COCONALA_TEMPLATES)
+        elif pattern == "F":
+            body = random.choice(MIDWORKS_TEMPLATES)
+        else:
+            body = FALLBACK_INFO[pattern]
+        print(_replace_urls(body))
         print()
+
+    print("=" * 40)
+    print("✅ 全ケースOK" if all_ok else "❌ 一部NG")
