@@ -1,0 +1,95 @@
+name: Instagram キャプション週次生成・メール送信
+
+on:
+  schedule:
+    - cron: '0 0 * * 4'   # 毎週木曜 09:00 JST (UTC 00:00)
+  workflow_dispatch:        # 手動実行（テスト用）
+    inputs:
+      week:
+        description: '週番号（省略時は自動計算）'
+        required: false
+        default: ''
+
+jobs:
+  generate-and-send:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: リポジトリをチェックアウト
+        uses: actions/checkout@v4
+
+      - name: Python をセットアップ
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: 依存ライブラリをインストール
+        run: pip install anthropic
+
+      - name: 週番号を計算
+        id: week
+        run: |
+          if [ -n "${{ github.event.inputs.week }}" ]; then
+            echo "num=${{ github.event.inputs.week }}" >> $GITHUB_OUTPUT
+          else
+            # 2026-04-23 を Week 1 の基準日として週番号を計算
+            BASE_DATE="2026-04-23"
+            TODAY=$(date +%Y-%m-%d)
+            DAYS=$(( ( $(date -d "$TODAY" +%s) - $(date -d "$BASE_DATE" +%s) ) / 86400 ))
+            WEEK=$(( DAYS / 7 + 1 ))
+            echo "num=$WEEK" >> $GITHUB_OUTPUT
+          fi
+
+      - name: キャプション生成
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          python3 generate_instagram_captions.py --week ${{ steps.week.outputs.num }}
+
+      - name: Gmailで送信
+        env:
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          WEEK_NUM: ${{ steps.week.outputs.num }}
+        run: |
+          python3 - <<'EOF'
+          import os
+          import smtplib
+          from email.mime.multipart import MIMEMultipart
+          from email.mime.text import MIMEText
+          from email.mime.base import MIMEBase
+          from email import encoders
+          from pathlib import Path
+
+          week = os.environ["WEEK_NUM"]
+          gmail_user = os.environ["GMAIL_USER"]
+          gmail_pass = os.environ["GMAIL_APP_PASSWORD"]
+
+          filepath = Path(f"instagram_captions/captions_week{week}.txt")
+          if not filepath.exists():
+              print(f"❌ ファイルが見つかりません: {filepath}")
+              exit(1)
+
+          msg = MIMEMultipart()
+          msg["From"] = gmail_user
+          msg["To"] = gmail_user
+          msg["Subject"] = f"【Instagram】Week {week} キャプション14本"
+
+          body = f"Week {week} のInstagramキャプション14本を添付しました。\n\nテーマローテーション:\n1週目: 治療経過\n2週目: 成分解説・Tips\n3週目: 費用・クリニック情報\n4週目: Q&A"
+          msg.attach(MIMEText(body, "plain", "utf-8"))
+
+          with open(filepath, "rb") as f:
+              part = MIMEBase("application", "octet-stream")
+              part.set_payload(f.read())
+              encoders.encode_base64(part)
+              part.add_header("Content-Disposition", f"attachment; filename=captions_week{week}.txt")
+              msg.attach(part)
+
+          with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+              server.login(gmail_user, gmail_pass)
+              server.sendmail(gmail_user, gmail_user, msg.as_string())
+
+          print(f"✅ 送信完了: {gmail_user} → Week {week}")
+          EOF
