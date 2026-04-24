@@ -112,15 +112,28 @@ def main():
         sys.exit(0)
 
     # コンテンツ生成
-    from src.business.content_generator import generate_post, get_fallback_post
+    from src.business.content_generator import (
+        generate_post, get_fallback_post, pattern_to_post_type,
+        _get_pattern_for, _count_hashtags,
+    )
+    import re as _re
+    from datetime import datetime as _dt
+    from zoneinfo import ZoneInfo as _ZI
+    _JST = _ZI("Asia/Tokyo")
+    _now = _dt.now(_JST)
+    _pattern = _get_pattern_for(_now.hour, _now.weekday())
+    _post_type = pattern_to_post_type(_pattern)
+    _is_affiliate = _pattern in ("E", "F")
 
     full_text = None
+    used_fallback = False
     if groq_key:
         full_text = generate_post(slot=slot, api_key=groq_key)
 
     if not full_text:
         log.warning("生成失敗 → フォールバックテキストを使用")
         full_text = get_fallback_post()
+        used_fallback = True
     log.info(f"投稿テキスト ({len(full_text)}文字):\n{full_text}")
 
     # 投稿
@@ -132,14 +145,22 @@ def main():
         save_log(post_log)
         sys.exit(1)
 
-    # ログ記録
+    # ログ記録（post_type・文字数・タグ数・アフィリ有無を追加）
+    _body_len = len(_re.sub(r'\n?#\S+', '', full_text).strip())
+    _tag_count = _count_hashtags(full_text)
     post_log.append({
-        "thread_id": thread_id,
-        "slot":      slot,
-        "posted_at": datetime.now(timezone.utc).isoformat(),
+        "thread_id":   thread_id,
+        "slot":        slot,
+        "post_type":   _post_type,
+        "pattern":     _pattern,
+        "char_count":  _body_len,
+        "tag_count":   _tag_count,
+        "is_affiliate": _is_affiliate,
+        "used_fallback": used_fallback,
+        "posted_at":   datetime.now(timezone.utc).isoformat(),
     })
     save_log(post_log)
-    log.info(f"ログ記録完了: 累計{len(post_log)}件")
+    log.info(f"ログ記録完了: 累計{len(post_log)}件 / type={_post_type} / {_body_len}文字 / タグ{_tag_count}個")
 
 
 if __name__ == "__main__":
