@@ -104,36 +104,50 @@ def main():
         log.error(f"認証失敗: {e}")
         sys.exit(1)
 
-    # 冪等性チェック（Threads APIで直近投稿を確認）
+    # コンテンツ生成モジュールをインポート
+    from src.business.content_generator import (
+        generate_post, get_fallback_post, pattern_to_post_type,
+        decide_post_pattern, _count_hashtags,
+    )
+    import re as _re
+
+    # ログを先にロード（アフィリ比率チェックに使用）
     post_log = load_log()
+
+    # 冪等性チェック（Threads APIで直近投稿を確認）
     if client.was_recently_posted(within_hours=2):
         log.warning("直近2時間以内に投稿済みのためスキップ")
         save_log(post_log)
         sys.exit(0)
 
-    # コンテンツ生成
-    from src.business.content_generator import (
-        generate_post, get_fallback_post, pattern_to_post_type,
-        _get_pattern_for, _count_hashtags,
-    )
-    import re as _re
-    from datetime import datetime as _dt
-    from zoneinfo import ZoneInfo as _ZI
-    _JST = _ZI("Asia/Tokyo")
-    _now = _dt.now(_JST)
-    _pattern = _get_pattern_for(_now.hour, _now.weekday())
+    # アフィリ比率を考慮してパターンを決定
+    _pattern = decide_post_pattern(post_log)
     _post_type = pattern_to_post_type(_pattern)
     _is_affiliate = _pattern in ("E", "F")
+    _affiliate_service = (
+        "coconala" if _pattern == "E"
+        else "midworks" if _pattern == "F"
+        else ""
+    )
+    log.info(
+        f"投稿パターン: {_pattern} / タイプ: {_post_type}"
+        + (f" / アフィリ: {_affiliate_service}" if _is_affiliate else "")
+    )
 
     full_text = None
     used_fallback = False
+    quality_check_result = "fallback"
+
     if groq_key:
-        full_text = generate_post(slot=slot, api_key=groq_key)
+        full_text = generate_post(slot=slot, api_key=groq_key, pattern=_pattern)
+        if full_text:
+            quality_check_result = "API生成"
 
     if not full_text:
-        log.warning("生成失敗 → フォールバックテキストを使用")
-        full_text = get_fallback_post()
+        log.warning("生成失敗またはAPIキー未設定 → フォールバックテキストを使用")
+        full_text = get_fallback_post(pattern=_pattern)
         used_fallback = True
+        quality_check_result = "fallback"
     log.info(f"投稿テキスト ({len(full_text)}文字):\n{full_text}")
 
     # 投稿
@@ -145,22 +159,29 @@ def main():
         save_log(post_log)
         sys.exit(1)
 
-    # ログ記録（post_type・文字数・タグ数・アフィリ有無を追加）
+    # ログ記録
     _body_len = len(_re.sub(r'\n?#\S+', '', full_text).strip())
     _tag_count = _count_hashtags(full_text)
     post_log.append({
-        "thread_id":   thread_id,
-        "slot":        slot,
-        "post_type":   _post_type,
-        "pattern":     _pattern,
-        "char_count":  _body_len,
-        "tag_count":   _tag_count,
-        "is_affiliate": _is_affiliate,
-        "used_fallback": used_fallback,
-        "posted_at":   datetime.now(timezone.utc).isoformat(),
+        "thread_id":          thread_id,
+        "slot":               slot,
+        "post_type":          _post_type,
+        "pattern":            _pattern,
+        "is_affiliate":       _is_affiliate,
+        "affiliate_service":  _affiliate_service,
+        "char_count":         _body_len,
+        "tag_count":          _tag_count,
+        "used_fallback":      used_fallback,
+        "quality_check_result": quality_check_result,
+        "posted_at":          datetime.now(timezone.utc).isoformat(),
     })
     save_log(post_log)
-    log.info(f"ログ記録完了: 累計{len(post_log)}件 / type={_post_type} / {_body_len}文字 / タグ{_tag_count}個")
+    log.info(
+        f"ログ記録完了: 累計{len(post_log)}件 / type={_post_type}"
+        f" / {_body_len}文字 / タグ{_tag_count}個"
+        f" / {'[fallback]' if used_fallback else '[API生成]'}"
+        + (f" / アフィリ:{_affiliate_service}" if _is_affiliate else "")
+    )
 
 
 if __name__ == "__main__":

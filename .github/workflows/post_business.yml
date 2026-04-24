@@ -2,9 +2,9 @@ name: Threads ビジネス自動投稿
 
 on:
   schedule:
-    - cron: '0 23 * * *'   # 08:00 JST（朝）
-    - cron: '0 3 * * *'    # 12:00 JST（昼）
-    - cron: '0 13 * * *'   # 22:00 JST（夜）
+    - cron: '0 0 * * *'    # 09:00 JST（朝）
+    - cron: '0 6 * * *'    # 15:00 JST（昼）
+    - cron: '0 12 * * *'   # 21:00 JST（夜）
   workflow_dispatch:         # 手動実行（テスト用）
 
 concurrency:
@@ -38,12 +38,14 @@ jobs:
           BUSINESS_THREADS_ACCESS_TOKEN: ${{ secrets.BUSINESS_THREADS_ACCESS_TOKEN }}
           BUSINESS_THREADS_USER_ID:      ${{ secrets.BUSINESS_THREADS_USER_ID }}
           GROQ_API_KEY:                  ${{ secrets.GROQ_API_KEY }}
+          COCONALA_AFFILIATE_URL:        ${{ secrets.COCONALA_AFFILIATE_URL }}
+          MIDWORKS_AFFILIATE_URL:        ${{ secrets.MIDWORKS_AFFILIATE_URL }}
         run: python main_business.py
 
       - name: ログをコミット
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add data/post_log_business.json
+          git add data/post_log_business.json data/business_last_info.json data/business_last_hashtag.json
           git diff --staged --quiet || git commit -m "chore: update business post log [skip ci]"
           git pull --rebase && git push
