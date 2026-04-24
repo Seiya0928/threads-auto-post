@@ -38,7 +38,7 @@ jobs:
           BUSINESS_THREADS_ACCESS_TOKEN: ${{ secrets.BUSINESS_THREADS_ACCESS_TOKEN }}
           BUSINESS_THREADS_USER_ID:      ${{ secrets.BUSINESS_THREADS_USER_ID }}
           GROQ_API_KEY:                  ${{ secrets.GROQ_API_KEY }}
-          COCONALA_AFFILIATE_URL:        ${{ secrets.COCONALA_AFFILIATE_URL }}
+          CROWDWORKS_AFFILIATE_URL:       ${{ secrets.CROWDWORKS_AFFILIATE_URL }}
           MIDWORKS_AFFILIATE_URL:        ${{ secrets.MIDWORKS_AFFILIATE_URL }}
         run: python main_business.py
 

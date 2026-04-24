@@ -125,7 +125,7 @@ def main():
     _post_type = pattern_to_post_type(_pattern)
     _is_affiliate = _pattern in ("E", "F")
     _affiliate_service = (
-        "coconala" if _pattern == "E"
+        "crowdworks" if _pattern == "E"
         else "midworks" if _pattern == "F"
         else ""
     )

@@ -14,7 +14,7 @@ business/content_generator.py — @claude_1706 収益化版コンテンツ生成
   C = failure      失敗談・やって無駄だったこと
   D = tool_review  AIツール比較・使用感
   G = prompt_share コピペできるプロンプト共有
-  E = coconala     ココナラアフィリ（体験→課題→解決→自然な紹介）
+  E = crowdworks   クラウドワークスアフィリ（体験→課題→解決→自然な紹介）
   F = midworks     Midworksアフィリ（体験→課題→解決→自然な紹介）
 
 品質ルール:
@@ -87,7 +87,7 @@ def _affiliate_allowed(log_entries: list) -> tuple:
         return False, ""
 
     if random.random() < 0.2:
-        service = random.choice(["coconala", "midworks"])
+        service = random.choice(["crowdworks", "midworks"])
         log.info(f"アフィリ投稿を選択: {service}")
         return True, service
 
@@ -103,7 +103,7 @@ def decide_post_pattern(log_entries: list) -> str:
     """
     allowed, service = _affiliate_allowed(log_entries)
     if allowed:
-        return "E" if service == "coconala" else "F"
+        return "E" if service == "crowdworks" else "F"
 
     last = _load_last_info_pattern()
     choices = [p for p in INFO_PATTERNS if p != last]
@@ -124,7 +124,7 @@ def pattern_to_post_type(pattern: str) -> str:
         "C": "failure",
         "D": "tool_review",
         "G": "prompt_share",
-        "E": "coconala",
+        "E": "crowdworks",
         "F": "midworks",
     }.get(pattern, "result")
 
@@ -205,9 +205,9 @@ def _quality_check(text: str) -> tuple:
 
 # ── アフィリ訴求文テンプレート ────────────────────────────────────────────────
 
-COCONALA_TEMPLATES = [
-    "Claude Codeで作ったシステム、売れるか試してる\n\nココナラで「AI自動化」「プロンプト設計」系の出品見たら\n個人でもちゃんと売れてる。登録無料で出品もできる\n\nまずは案件眺めるだけでも相場感つかめる\n👉 {COCONALA_AFFILIATE_URL}\n\n#副業 #AI活用",
-    "副業でAIスキルを売るって、現実的だなと思った\n\nココナラで「ChatGPT活用」「Claude」で検索すると\n個人がちゃんと稼いでる。登録と出品は完全無料\n\n自分のスキルの値付け参考にもなる\n👉 {COCONALA_AFFILIATE_URL}\n\n#副業収入 #AI活用",
+CROWDWORKS_TEMPLATES = [
+    "AI系の副業、最初の1件が一番難しかった\n\nクラウドワークスで「ChatGPT」「プロンプト」で検索したら\nAI系の案件が想像より多くて驚いた\n登録も応募も無料なので、まず相場を見るだけでも価値ある\n👉 {CROWDWORKS_AFFILIATE_URL}\n\n#副業 #AI活用",
+    "スキルを売る前に、相場を知るのが先だと思った\n\nクラウドワークスでAI・自動化系の案件を眺めてみたら\n単価の幅が広くて、自分のレベルに合う仕事が見つかりやすい\n登録無料なので見るだけでも損はない\n👉 {CROWDWORKS_AFFILIATE_URL}\n\n#副業収入 #AI活用",
 ]
 
 MIDWORKS_TEMPLATES = [
@@ -310,19 +310,19 @@ PATTERN_PROMPTS = {
     "E": """\
 以下の構成でThreads投稿を書いてください。
 
-投稿タイプ: ココナラ紹介（体験→課題→解決→自然な紹介）
+投稿タイプ: クラウドワークス紹介（体験→課題→解決→自然な紹介）
 
 構成:
-1行目: 数字または具体的な悩みから始める（例:「副業1ヶ月目、収益ゼロだった」）
-本文前半: 自分が抱えていた課題・疑問を書く
-本文後半: ココナラを使ってみて「相場が分かった」「個人でも出品できた」などの発見
-末尾: 自然にサービスを紹介し「👉 {COCONALA_AFFILIATE_URL}」を含める
+1行目: 数字または具体的な悩みから始める（例:「副業を始めて最初の1ヶ月、何から手をつけるか分からなかった」）
+本文前半: 自分が抱えていた課題（AI副業の始め方・相場感がつかめない等）
+本文後半: クラウドワークスでAI系案件を調べて分かった発見（案件数・単価・応募しやすさ等）
+末尾: 自然に紹介し「👉 {CROWDWORKS_AFFILIATE_URL}」を含める
 
 厳守ルール:
 ・「絶対稼げる」「誰でも簡単」「放置で稼げる」などの誇大表現は禁止
 ・リンクのみの投稿は禁止
 ・押しつけない、等身大で
-・登録と出品が無料という事実を含める
+・登録と応募が無料という事実を含める
 ・120〜200文字（ハッシュタグ除く）
 ・ハッシュタグは書かない（別途付与します）
 ・投稿テキストのみ出力してください""",
@@ -351,9 +351,13 @@ PATTERN_PROMPTS = {
 # ── URL置換ヘルパー ───────────────────────────────────────────────────────────
 
 def _replace_urls(text: str) -> str:
-    coconala_url = os.environ.get("COCONALA_AFFILIATE_URL", "[ココナラはプロフィールリンクから]")
+    crowdworks_url = os.environ.get("CROWDWORKS_AFFILIATE_URL", "[クラウドワークスはプロフィールリンクから]")
     midworks_url = os.environ.get("MIDWORKS_AFFILIATE_URL", "[Midworksはプロフィールリンクから]")
-    return text.replace("{COCONALA_AFFILIATE_URL}", coconala_url).replace("{MIDWORKS_AFFILIATE_URL}", midworks_url)
+    return (
+        text
+        .replace("{CROWDWORKS_AFFILIATE_URL}", crowdworks_url)
+        .replace("{MIDWORKS_AFFILIATE_URL}", midworks_url)
+    )
 
 
 # ── メイン生成関数 ────────────────────────────────────────────────────────────
@@ -423,7 +427,7 @@ def get_fallback_post(pattern: Optional[str] = None) -> str:
         pattern = decide_post_pattern([])
 
     if pattern == "E":
-        return _replace_urls(random.choice(COCONALA_TEMPLATES))
+        return _replace_urls(random.choice(CROWDWORKS_TEMPLATES))
     elif pattern == "F":
         return _replace_urls(random.choice(MIDWORKS_TEMPLATES))
     else:
