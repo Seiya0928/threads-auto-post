@@ -1,10 +1,11 @@
 name: Threads 自動投稿
 
 on:
-  schedule:
-    - cron: '30 22 * * *'   # 07:30 JST（朝の準備時間）
-    - cron: '30 3 * * *'    # 12:30 JST（昼）
-    - cron: '30 12 * * *'   # 21:30 JST（夜のゴールデンタイム）
+  # schedule: 一時停止中（@skin_journal5 ログイン問題のため 2026-04-25〜）
+  # schedule:
+  #   - cron: '30 22 * * *'   # 07:30 JST（朝の準備時間）
+  #   - cron: '30 3 * * *'    # 12:30 JST（昼）
+  #   - cron: '30 12 * * *'   # 21:30 JST（夜のゴールデンタイム）
   workflow_dispatch:         # 手動実行（テスト用）
 
 concurrency:
