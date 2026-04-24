@@ -93,5 +93,16 @@
     "thread_id": "18373475257160161",
     "slot": "evening",
     "posted_at": "2026-04-24T09:18:17.023407+00:00"
+  },
+  {
+    "thread_id": "17911818270373083",
+    "slot": "evening",
+    "post_type": "result",
+    "pattern": "A",
+    "char_count": 97,
+    "tag_count": 2,
+    "is_affiliate": false,
+    "used_fallback": true,
+    "posted_at": "2026-04-24T16:15:01.271681+00:00"
   }
 ]
