@@ -77,18 +77,7 @@ jobs:
           msg["To"] = gmail_user
           msg["Subject"] = f"【Instagram】Week {week} キャプション14本"
 
-          body = f"""Week {week} のInstagramキャプション14本を添付しました。
-
-運用方針:
-・14本中2本はnote誘導強め
-・4本はプロフィールnoteへの弱い誘導
-・残り8本は信頼獲得用
-・投稿前に画像とキャプションの内容がズレていないか確認
-・医療効果を断定する表現があれば手動で修正
-・Instagram投稿文ではURL直貼りより「プロフィールのnote」誘導を優先
-
-note:
-https://note.com/www32541/n/n8f9414541bec"""
+          body = f"Week {week} のInstagramキャプション14本を添付しました。\n\n運用方針:\n・14本中2本はnote誘導強め\n・4本はプロフィールnoteへの弱い誘導\n・残り8本は信頼獲得用\n・投稿前に画像とキャプションの内容がズレていないか確認\n・医療効果を断定する表現があれば手動で修正\n・Instagram投稿文ではURL直貼りより「プロフィールのnote」誘導を優先\n\nnote:\nhttps://note.com/www32541/n/n8f9414541bec"
           msg.attach(MIMEText(body, "plain", "utf-8"))
 
           with open(filepath, "rb") as f:
