@@ -117,5 +117,18 @@
     "used_fallback": true,
     "quality_check_result": "fallback",
     "posted_at": "2026-04-25T08:38:42.796398+00:00"
+  },
+  {
+    "thread_id": "18011989772894283",
+    "slot": "evening",
+    "post_type": "failure",
+    "pattern": "C",
+    "is_affiliate": false,
+    "affiliate_service": "",
+    "char_count": 161,
+    "tag_count": 2,
+    "used_fallback": false,
+    "quality_check_result": "API生成",
+    "posted_at": "2026-04-25T14:30:17.153274+00:00"
   }
 ]
