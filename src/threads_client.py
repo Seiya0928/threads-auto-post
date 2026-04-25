@@ -73,20 +73,28 @@ class ThreadsClient:
     # 公開
     # ------------------------------------------------------------------
 
-    def publish(self, container_id: str, wait_sec: int = 5) -> str:
-        """コンテナを公開してスレッドIDを返す。処理待ちのため少し待つ。"""
+    def publish(self, container_id: str, wait_sec: int = 5, max_retries: int = 3) -> str:
+        """コンテナを公開してスレッドIDを返す。500系の一時エラーはリトライする。"""
         time.sleep(wait_sec)
-        resp = requests.post(
-            f"{THREADS_API}/{self.user_id}/threads_publish",
-            params={"creation_id": container_id, "access_token": self.token},
-            timeout=15,
-        )
-        if not resp.ok:
-            log.error(f"公開エラー {resp.status_code}: {resp.text}")
-        resp.raise_for_status()
-        thread_id = resp.json()["id"]
-        log.info(f"公開成功: thread_id={thread_id}")
-        return thread_id
+        for attempt in range(1, max_retries + 1):
+            resp = requests.post(
+                f"{THREADS_API}/{self.user_id}/threads_publish",
+                params={"creation_id": container_id, "access_token": self.token},
+                timeout=15,
+            )
+            if resp.ok:
+                thread_id = resp.json()["id"]
+                log.info(f"公開成功: thread_id={thread_id}")
+                return thread_id
+
+            is_transient = resp.json().get("error", {}).get("is_transient", False)
+            log.error(f"公開エラー {resp.status_code} (attempt {attempt}): {resp.text}")
+            if is_transient and attempt < max_retries:
+                wait = 10 * attempt  # 10s → 20s
+                log.info(f"一時エラーのためリトライ待機 {wait}s...")
+                time.sleep(wait)
+            else:
+                resp.raise_for_status()
 
     # ------------------------------------------------------------------
     # 便利メソッド
