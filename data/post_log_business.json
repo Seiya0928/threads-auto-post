@@ -104,5 +104,18 @@
     "is_affiliate": false,
     "used_fallback": true,
     "posted_at": "2026-04-24T16:15:01.271681+00:00"
+  },
+  {
+    "thread_id": "17970090981021489",
+    "slot": "evening",
+    "post_type": "prompt_share",
+    "pattern": "G",
+    "is_affiliate": false,
+    "affiliate_service": "",
+    "char_count": 101,
+    "tag_count": 2,
+    "used_fallback": true,
+    "quality_check_result": "fallback",
+    "posted_at": "2026-04-25T08:38:42.796398+00:00"
   }
 ]
