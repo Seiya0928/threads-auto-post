@@ -1,0 +1,38 @@
+{
+  "story": {
+    "description": "AI副業・アプリ開発・自動化・収益化までの実体験を語る投稿",
+    "tone": "リアル、具体的、少し内省的、売り込みなし",
+    "cta": "なし、または軽い問いかけ",
+    "hashtags": "#AI副業 #個人開発"
+  },
+  "failure": {
+    "description": "失敗談、詰まった点、反省、うまくいかなかったことを書く投稿",
+    "tone": "正直、具体的、学びがある",
+    "cta": "なし、または共感を促す問い",
+    "hashtags": "#AI副業 #個人開発"
+  },
+  "insight": {
+    "description": "AI副業・自動化・SNS運用・個人開発の気づきを短く書く投稿",
+    "tone": "短く鋭い、保存したくなる",
+    "cta": "なし",
+    "hashtags": "#AI活用 #副業"
+  },
+  "howto": {
+    "description": "初心者向けの実用ノウハウ投稿",
+    "tone": "わかりやすい、具体的、手順感がある",
+    "cta": "なし、または保存促進",
+    "hashtags": "#AI活用 #個人開発"
+  },
+  "affiliate_soft": {
+    "description": "文脈の中で自然にツールやサービスを紹介する投稿",
+    "tone": "自然、体験談ベース、売り込み感を弱める",
+    "cta": "soft",
+    "hashtags": "#副業 #AI活用"
+  },
+  "affiliate_hard": {
+    "description": "明確におすすめ・紹介する投稿",
+    "tone": "端的、ベネフィット明確、煽りすぎない",
+    "cta": "hard",
+    "hashtags": "#副業収入 #AI副業"
+  }
+}
