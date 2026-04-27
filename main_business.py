@@ -303,7 +303,7 @@ def quality_check(
     text: str,
     post_type: str,
     is_affiliate: bool,
-    affiliate_url: str,
+    affiliate_urls: list[str],
     recent_texts: list[str],
 ) -> tuple[bool, str]:
     if not text or not text.strip():
@@ -325,9 +325,11 @@ def quality_check(
     if not is_affiliate and re.search(r'https?://', text):
         return False, "リンクなし投稿にURLが含まれている"
 
-    # affiliate_soft/hard 以外で AFFILIATE_URL が混入していないか
-    if affiliate_url and not is_affiliate and affiliate_url in text:
-        return False, "アフィリエイトURLがリンクなし投稿に含まれている"
+    # affiliate_soft/hard 以外でアフィリURLが混入していないか
+    if not is_affiliate:
+        for url in affiliate_urls:
+            if url and url in text:
+                return False, "アフィリエイトURLがリンクなし投稿に含まれている"
 
     # 禁止ワード
     for phrase in BANNED_PHRASES:
@@ -348,6 +350,8 @@ def generate_post(
     slot: str,
     is_affiliate: bool,
     affiliate_url: str,
+    crowdworks_url: str,
+    midworks_url: str,
     groq_key: str,
     recent_texts: list[str],
     hashtags: str,
@@ -363,6 +367,7 @@ def generate_post(
 
     prompt = build_prompt(post_type, slot, affiliate_url)
     client = Groq(api_key=groq_key)
+    all_affiliate_urls = [u for u in [crowdworks_url, midworks_url] if u]
 
     for attempt in range(1, 4):
         try:
@@ -372,7 +377,7 @@ def generate_post(
             )
             body = resp.choices[0].message.content.strip()
             text = f"{body}\n\n{hashtags}"
-            ok, reason = quality_check(text, post_type, is_affiliate, affiliate_url, recent_texts)
+            ok, reason = quality_check(text, post_type, is_affiliate, all_affiliate_urls, recent_texts)
             if ok:
                 log.info(f"Groq生成成功 (attempt {attempt}): {len(body)}文字 / {post_type}")
                 return text
@@ -447,11 +452,8 @@ def main() -> None:
     # 環境変数
     token = os.environ.get("BUSINESS_THREADS_ACCESS_TOKEN", "")
     groq_key = os.environ.get("GROQ_API_KEY", "")
-    # AFFILIATE_URL を優先、なければ後方互換で CROWDWORKS_AFFILIATE_URL を使用
-    affiliate_url = (
-        os.environ.get("AFFILIATE_URL", "").strip()
-        or os.environ.get("CROWDWORKS_AFFILIATE_URL", "").strip()
-    )
+    crowdworks_url = os.environ.get("CROWDWORKS_AFFILIATE_URL", "").strip()
+    midworks_url   = os.environ.get("MIDWORKS_AFFILIATE_URL", "").strip()
 
     if not token and not dry_run:
         log.error("BUSINESS_THREADS_ACCESS_TOKEN が設定されていません")
@@ -472,8 +474,10 @@ def main() -> None:
     now_jst = datetime.now(JST)
     log.info(f"スロット: {slot} (JST {now_jst.strftime('%H:%M')})")
     log.info(f"投稿タイプ: {post_type} / アフィリ: {is_affiliate}")
+    # タイプ別アフィリエイトURL（soft=クラウドワークス / hard=Midworks）
+    affiliate_url = crowdworks_url if post_type == "affiliate_soft" else midworks_url
     if is_affiliate:
-        log.info(f"AFFILIATE_URL: {'設定あり' if affiliate_url else '未設定（CTAフォールバック）'}")
+        log.info(f"アフィリURL ({post_type}): {'設定あり' if affiliate_url else '未設定（CTAフォールバック）'}")
 
     # ハッシュタグ
     hashtags = get_hashtags(post_type, prompts_cfg)
@@ -481,6 +485,7 @@ def main() -> None:
     # テキスト生成
     full_text = generate_post(
         post_type, slot, is_affiliate, affiliate_url,
+        crowdworks_url, midworks_url,
         groq_key, recent_texts, hashtags,
     )
     used_fallback = full_text is None
@@ -507,7 +512,8 @@ def main() -> None:
 
     # DRY RUN 出力
     if dry_run:
-        ok, reason = quality_check(full_text, post_type, is_affiliate, affiliate_url, recent_texts)
+        all_urls = [u for u in [crowdworks_url, midworks_url] if u]
+        ok, reason = quality_check(full_text, post_type, is_affiliate, all_urls, recent_texts)
         print("\n" + "=" * 60)
         print(f"[DRY RUN] 投稿タイプ   : {post_type}")
         print(f"[DRY RUN] アフィリ有無 : {is_affiliate}")
