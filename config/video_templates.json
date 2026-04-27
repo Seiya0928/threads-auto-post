@@ -1,0 +1,35 @@
+{
+  "shock": {
+    "hook_text": "そのサブスク、年額で見ると怖い",
+    "middle_text": "月額だと安く見えるけど…",
+    "cta_text": "サブスク帳で全部見える化",
+    "max_duration": 15,
+    "output_width": 1080,
+    "output_height": 1920,
+    "font_size_hook": 72,
+    "font_size_middle": 56,
+    "font_size_cta": 60
+  },
+  "cleanup": {
+    "hook_text": "使ってないサブスク、放置してない？",
+    "middle_text": "毎月の固定費、まずここから見直す",
+    "cta_text": "サブスク帳で整理する",
+    "max_duration": 15,
+    "output_width": 1080,
+    "output_height": 1920,
+    "font_size_hook": 68,
+    "font_size_middle": 54,
+    "font_size_cta": 60
+  },
+  "ai_user": {
+    "hook_text": "AI課金、合計したことある？",
+    "middle_text": "ChatGPT、Claude、Gemini…全部足すと？",
+    "cta_text": "サブスク帳で月額管理",
+    "max_duration": 15,
+    "output_width": 1080,
+    "output_height": 1920,
+    "font_size_hook": 76,
+    "font_size_middle": 56,
+    "font_size_cta": 60
+  }
+}

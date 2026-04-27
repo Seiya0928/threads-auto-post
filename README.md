@@ -89,3 +89,97 @@ python get_token.py
 # トークン診断
 python debug_auth.py
 ```
+
+---
+
+## 4. ショート動画自動生成（サブスク帳 PR 用）
+
+TikTok / Instagram Reels / YouTube Shorts 向けの縦動画（9:16）を、画面録画素材から半自動生成します。
+
+### 必要な依存関係
+
+```bash
+pip install 'moviepy>=1.0.3,<2.0' imageio-ffmpeg
+```
+
+> **ffmpeg が必要です。** moviepy が内部で使用します。
+>
+> ```bash
+> # macOS
+> brew install ffmpeg
+>
+> # Ubuntu/Debian
+> sudo apt install ffmpeg
+> ```
+
+### 日本語フォント（任意）
+
+日本語テキストを正しく表示するには日本語フォントが必要です。
+macOS には Hiragino が標準搭載されているため、通常は追加不要です。
+フォントが自動検出されない場合は `fonts/` ディレクトリに `.ttf` / `.ttc` を配置してください。
+
+### 画面録画素材の置き場所
+
+```
+input/recordings/demo.mp4   ← ここに mp4 を置く
+```
+
+### テンプレート一覧
+
+| テンプレート | 用途 |
+|------------|------|
+| `shock`    | 年額で見るとゾッとする訴求 |
+| `cleanup`  | 解約・整理を促す訴求 |
+| `ai_user`  | AI課金ユーザー向け訴求 |
+
+### 単体生成コマンド
+
+```bash
+python scripts/generate_short_video.py \
+  --input input/recordings/demo.mp4 \
+  --template shock \
+  --output output/videos/demo_shock.mp4
+```
+
+オプション:
+
+| オプション | 説明 |
+|-----------|------|
+| `--template` | テンプレート名（shock / cleanup / ai_user）|
+| `--output`   | 出力パス（省略時は自動生成）|
+| `--font`     | 日本語フォントパス（省略時は自動検出）|
+| `--fps`      | 出力FPS（デフォルト: 30）|
+| `--keep-audio` | 入力音声を保持する |
+
+### 一括生成コマンド
+
+```bash
+python scripts/batch_generate_short_videos.py \
+  --input-dir input/recordings \
+  --templates shock cleanup ai_user
+```
+
+出力例:
+```
+output/videos/demo_shock.mp4
+output/videos/demo_cleanup.mp4
+output/videos/demo_ai_user.mp4
+```
+
+### 生成される動画の仕様
+
+| 項目 | 値 |
+|------|-----|
+| 解像度 | 1080 × 1920（縦型 9:16）|
+| コーデック | H.264 / yuv420p |
+| FPS | 30 |
+| 最大尺 | 15秒 |
+| 音声 | なし（デフォルト）|
+| 背景 | 元動画を拡大・ぼかし |
+
+### TikTok / Reels 投稿時の使い方
+
+1. `output/videos/` から動画を取り出す
+2. TikTok / Instagram のアップロード画面から動画を選択
+3. **BGM はアプリ側（TikTok / Instagram）で追加する**（動画ファイル自体は無音）
+4. 必要に応じてキャプションを追加して投稿

@@ -6,3 +6,6 @@ logs/
 images/
 .DS_Store
 *.log
+input/recordings/*.mp4
+output/videos/*.mp4
+fonts/

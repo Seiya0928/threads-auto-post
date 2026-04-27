@@ -4,3 +4,5 @@ python-dotenv==1.0.1
 anthropic
 pytrends==4.9.2
 groq
+moviepy>=1.0.3,<2.0
+imageio-ffmpeg
