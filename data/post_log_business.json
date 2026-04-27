@@ -169,5 +169,18 @@
     "used_fallback": true,
     "quality_check_result": "fallback",
     "posted_at": "2026-04-26T14:29:53.279735+00:00"
+  },
+  {
+    "thread_id": "17920837704345670",
+    "slot": "noon",
+    "post_type": "howto",
+    "pattern": "B",
+    "is_affiliate": false,
+    "affiliate_service": "",
+    "char_count": 144,
+    "tag_count": 2,
+    "used_fallback": false,
+    "quality_check_result": "API生成",
+    "posted_at": "2026-04-27T07:58:10.802236+00:00"
   }
 ]
