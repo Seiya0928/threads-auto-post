@@ -22,5 +22,18 @@
     "success": true,
     "thread_id": null,
     "error": ""
+  },
+  {
+    "posted_at": "2026-04-30T16:08:06.536986+09:00",
+    "category": "affiliate",
+    "affiliate_post": true,
+    "is_affiliate": true,
+    "has_affiliate_link": true,
+    "used_fallback": true,
+    "dry_run": true,
+    "text": "最近よかったのは、毎日使う物を楽天でまとめて見直すやり方。高い物を探すより、使う頻度が高い物を整える方が満足度が高い。PR｜楽天アフィリエイトリンクを含みます 👉 https://a.r10.to/h5wqP0",
+    "success": true,
+    "thread_id": null,
+    "error": ""
   }
 ]
