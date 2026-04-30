@@ -1,185 +1,72 @@
-# skin-journal / x-ai-poster
+# threads-auto-post
 
-スキンケア美容アカウント用の自動投稿・下書き生成システム。
+Threads 自動投稿リポジトリです。現在の主用途は次の 2 レーンです。
 
----
+- ビジネスアカウント向け Threads 自動投稿
+- 楽天アフィリエイト用 Threads 投稿レーン
 
-## 機能
+停止中・実験中・旧運用のコードは `archive/` に退避しています。作業前に必ず [PROJECT_STATUS.md](/Users/apple/threads-auto-post/PROJECT_STATUS.md) を確認してください。
 
-### 1. Threads 自動投稿（個人アカウント）
-- **スケジュール**: 毎日 07:30 JST・21:30 JST
-- **内容**: スキンケア・美容系テキスト投稿（Gemini AI生成）
-- **特徴**: A/Bテスト（list vs paragraph形式）、Googleトレンド活用
-- **ワークフロー**: `.github/workflows/post.yml`
-- **エントリーポイント**: `post_once.py`
+## 現在の主要ファイル
 
-### 2. Threads 自動投稿（ビジネスアカウント）
-- **スケジュール**: 毎日 08:00 JST・22:00 JST
-- **内容**: AI副業・自動化テーマの投稿
-- **ワークフロー**: `.github/workflows/post_business.yml`
-- **エントリーポイント**: `main_business.py`
+### ビジネスアカウント
+- workflow: [.github/workflows/post_business.yml](/Users/apple/threads-auto-post/.github/workflows/post_business.yml)
+- entrypoint: [main_business.py](/Users/apple/threads-auto-post/main_business.py)
+- prompts: [config/business_prompts.json](/Users/apple/threads-auto-post/config/business_prompts.json)
+- generator: [src/business/content_generator.py](/Users/apple/threads-auto-post/src/business/content_generator.py)
 
-### 3. X 投稿下書き自動生成
-- **スケジュール**: 毎日 22:00 JST（UTC 13:00）
-- **内容**: スキンケア・美容テーマの下書きを 3〜5 本生成してファイル保存
-- **自動投稿はしない**（手動投稿用の下書き）
-- **保存先**: `x_drafts/YYYY-MM-DD.txt`
-- **ワークフロー**: `.github/workflows/generate_x_drafts.yml`
-- **エントリーポイント**: `generate_x_drafts.py`
+### 楽天アフィリエイト用
+- workflow: [.github/workflows/post_rakuten.yml](/Users/apple/threads-auto-post/.github/workflows/post_rakuten.yml)
+- entrypoint: [main_rakuten.py](/Users/apple/threads-auto-post/main_rakuten.py)
+- prompts: [config/rakuten_prompts.json](/Users/apple/threads-auto-post/config/rakuten_prompts.json)
+- generator: [src/rakuten/content_generator.py](/Users/apple/threads-auto-post/src/rakuten/content_generator.py)
 
----
-
-## X 下書き生成の詳細
-
-### アカウント設定
-- テーマ: スキンケア・美容（トレチノイン×ハイドロキノン療法がコア）
-- 言語: 日英ミックス
-- トーン: ゆるい・等身大の人間っぽい
-
-### 投稿タイプ比率
-| タイプ | 比率 | 内容 |
-|--------|------|------|
-| 知識系 | 40% | スキンケアtips・成分解説（日英ミックス） |
-| 体験系 | 25% | 施術・変化の記録（日本語中心） |
-| 共感系 | 20% | あるある・独り言（短め・英語OK） |
-| 反応系 | 15% | ミームへのコメント（カジュアル） |
-
-### 出力フォーマット（`x_drafts/2026-04-07.txt`）
-```
-[1/4] 知識系
-トレチノインを使い始めて最初の2週間、肌が荒れるのは正常。これ知らなくて辞める人が多すぎる。
-The "purging phase" is real — give it 4-6 weeks before judging results.
----
-[2/4] 体験系
-レーザー4回目終わった。シミが薄くなってきてるのは確かだけど、ダウンタイムの赤みがしんどい。美容は我慢と投資だなと毎回思う。
----
-```
-
-### 必要なシークレット
-- `GEMINI_API_KEY`（Threadsと共用）
-
----
+### 共通
+- Threads client: [src/threads_client.py](/Users/apple/threads-auto-post/src/threads_client.py)
+- token helpers:
+  - [get_token.py](/Users/apple/threads-auto-post/get_token.py)
+  - [refresh_token.py](/Users/apple/threads-auto-post/refresh_token.py)
+  - [debug_auth.py](/Users/apple/threads-auto-post/debug_auth.py)
 
 ## セットアップ
 
-### GitHub Secrets
-| シークレット名 | 用途 |
-|----------------|------|
-| `THREADS_ACCESS_TOKEN` | 個人Threadsアカウントのトークン |
-| `THREADS_USER_ID` | 個人ThreadsユーザーID |
-| `BUSINESS_THREADS_ACCESS_TOKEN` | ビジネスアカウントのトークン |
-| `BUSINESS_THREADS_USER_ID` | ビジネスアカウントのユーザーID |
-| `GEMINI_API_KEY` | Google Gemini APIキー |
-| `AFFILIATE_URL` | アフィリエイトリンク（任意） |
-
-### ローカル開発
 ```bash
-# 依存インストール
 pip install -r requirements.txt
+```
 
-# X下書きを手動生成（テスト）
-GEMINI_API_KEY=your_key python generate_x_drafts.py
+## 楽天レーンの手動テスト
 
-# Threads投稿テスト
-THREADS_ACCESS_TOKEN=your_token GEMINI_API_KEY=your_key python post_once.py
+```bash
+python3 -m py_compile main_rakuten.py src/rakuten/content_generator.py
+DRY_RUN=true python3 main_rakuten.py
+```
 
-# トークン取得
+必要な環境変数:
+- `RAKUTEN_THREADS_ACCESS_TOKEN`
+- `RAKUTEN_THREADS_USER_ID`
+- `RAKUTEN_AFFILIATE_URL`
+- `GROQ_API_KEY`
+
+楽天アフィリエイトリンク付き投稿では、本文に毎回 `PR｜楽天アフィリエイトリンクを含みます` を入れる設計です。
+
+## ビジネスレーン
+
+現在の稼働レーンです。変更前に必ず `post_business.yml` / `main_business.py` / `config/business_prompts.json` / `src/business/` を確認してください。
+
+## Threads API トークン取得
+
+```bash
 python get_token.py
-
-# トークン診断
 python debug_auth.py
 ```
 
----
+`get_token.py` の redirect URI は `https://oauth.pstmn.io/v1/callback` を使います。
 
-## 4. ショート動画自動生成（サブスク帳 PR 用）
+## 停止中コードについて
 
-TikTok / Instagram Reels / YouTube Shorts 向けの縦動画（9:16）を、画面録画素材から半自動生成します。
+- 停止中の旧 Threads 美容レーン
+- X 下書き生成
+- Instagram キャプション生成
+- 停止済み workflow
 
-### 必要な依存関係
-
-```bash
-pip install 'moviepy>=1.0.3,<2.0' imageio-ffmpeg
-```
-
-> **ffmpeg が必要です。** moviepy が内部で使用します。
->
-> ```bash
-> # macOS
-> brew install ffmpeg
->
-> # Ubuntu/Debian
-> sudo apt install ffmpeg
-> ```
-
-### 日本語フォント（任意）
-
-日本語テキストを正しく表示するには日本語フォントが必要です。
-macOS には Hiragino が標準搭載されているため、通常は追加不要です。
-フォントが自動検出されない場合は `fonts/` ディレクトリに `.ttf` / `.ttc` を配置してください。
-
-### 画面録画素材の置き場所
-
-```
-input/recordings/demo.mp4   ← ここに mp4 を置く
-```
-
-### テンプレート一覧
-
-| テンプレート | 用途 |
-|------------|------|
-| `shock`    | 年額で見るとゾッとする訴求 |
-| `cleanup`  | 解約・整理を促す訴求 |
-| `ai_user`  | AI課金ユーザー向け訴求 |
-
-### 単体生成コマンド
-
-```bash
-python scripts/generate_short_video.py \
-  --input input/recordings/demo.mp4 \
-  --template shock \
-  --output output/videos/demo_shock.mp4
-```
-
-オプション:
-
-| オプション | 説明 |
-|-----------|------|
-| `--template` | テンプレート名（shock / cleanup / ai_user）|
-| `--output`   | 出力パス（省略時は自動生成）|
-| `--font`     | 日本語フォントパス（省略時は自動検出）|
-| `--fps`      | 出力FPS（デフォルト: 30）|
-| `--keep-audio` | 入力音声を保持する |
-
-### 一括生成コマンド
-
-```bash
-python scripts/batch_generate_short_videos.py \
-  --input-dir input/recordings \
-  --templates shock cleanup ai_user
-```
-
-出力例:
-```
-output/videos/demo_shock.mp4
-output/videos/demo_cleanup.mp4
-output/videos/demo_ai_user.mp4
-```
-
-### 生成される動画の仕様
-
-| 項目 | 値 |
-|------|-----|
-| 解像度 | 1080 × 1920（縦型 9:16）|
-| コーデック | H.264 / yuv420p |
-| FPS | 30 |
-| 最大尺 | 15秒 |
-| 音声 | なし（デフォルト）|
-| 背景 | 元動画を拡大・ぼかし |
-
-### TikTok / Reels 投稿時の使い方
-
-1. `output/videos/` から動画を取り出す
-2. TikTok / Instagram のアップロード画面から動画を選択
-3. **BGM はアプリ側（TikTok / Instagram）で追加する**（動画ファイル自体は無音）
-4. 必要に応じてキャプションを追加して投稿
+これらは `archive/` に隔離しています。詳細は [PROJECT_STATUS.md](/Users/apple/threads-auto-post/PROJECT_STATUS.md) を参照してください。

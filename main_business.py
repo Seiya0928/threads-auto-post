@@ -94,7 +94,7 @@ FALLBACK_TEXTS: dict[str, str] = {
     "howto": (
         "GitHub ActionsとGroq APIで投稿を自動化する手順。\n"
         "1. Groq APIキーを取得（無料）\n"
-        "2. main.pyで投稿文を生成\n"
+        "2. main_business.pyで投稿文を生成\n"
         "3. GitHub Actionsで定時実行\n"
         "サーバーコストゼロで動く。"
     ),
