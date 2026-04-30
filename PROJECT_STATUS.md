@@ -149,3 +149,18 @@
 補足:
 - この repo には今回の整理とは別に、既存の `video` 関連削除差分と `get_token.py` / `README.md` の変更がすでに入っていた
 - それらは今回の archive 整理とは切り分けて扱う
+
+## 未処理stash
+
+- `stash@{0}`: `temp unrelated changes before archive merge`
+  - archive整理とは無関係
+  - 主に video 関連差分と `get_token.py` 変更
+  - main には未反映
+  - 扱う場合は main から専用ブランチを切って apply する
+  - `stash pop` / `stash drop` はまだしない
+
+- `stash@{1}`: `temp unrelated local changes before rakuten push`
+  - より古い別件の退避
+  - 内容確認前
+  - main には未反映
+  - 扱う場合は `stash@{0}` とは別ブランチで確認する
