@@ -1,0 +1,26 @@
+[
+  {
+    "posted_at": "2026-04-30T14:24:41.313126+09:00",
+    "category": "gadget_desk",
+    "is_affiliate": false,
+    "used_fallback": true,
+    "dry_run": true,
+    "text": "デスク周りで満足度が高かったのは、PCスタンドみたいな姿勢が変わる系。作業時間が長い日は、スペックより疲れにくさの方が効く。派手なガジェットより先に整えると、地味に毎日ラクになる。",
+    "success": true,
+    "thread_id": null,
+    "error": ""
+  },
+  {
+    "posted_at": "2026-04-30T15:09:01.871615+09:00",
+    "category": "waste_cut",
+    "affiliate_post": false,
+    "is_affiliate": false,
+    "has_affiliate_link": false,
+    "used_fallback": true,
+    "dry_run": true,
+    "text": "無駄遣いを減らすなら、安いから買うをやめるのが先だった。同じ用途のものを何個も持つと結局使わない。買う前に代用品が家にないか見るだけで、出費がかなり落ち着くし、物も増えにくい。",
+    "success": true,
+    "thread_id": null,
+    "error": ""
+  }
+]

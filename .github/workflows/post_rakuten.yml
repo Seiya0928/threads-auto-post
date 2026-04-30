@@ -1,0 +1,56 @@
+name: Threads 楽天アフィリエイト投稿
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "DRY_RUN を有効にするか"
+        required: true
+        default: "true"
+        type: choice
+        options:
+          - "true"
+          - "false"
+
+concurrency:
+  group: threads-rakuten-post
+  cancel-in-progress: false
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+    steps:
+      - name: リポジトリをチェックアウト
+        uses: actions/checkout@v4
+
+      - name: Python をセットアップ
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: 依存ライブラリをインストール
+        run: pip install -r requirements.txt
+
+      - name: 楽天投稿レーンを実行
+        env:
+          DRY_RUN: ${{ github.event.inputs.dry_run }}
+          RAKUTEN_THREADS_ACCESS_TOKEN: ${{ secrets.RAKUTEN_THREADS_ACCESS_TOKEN }}
+          RAKUTEN_THREADS_USER_ID: ${{ secrets.RAKUTEN_THREADS_USER_ID }}
+          RAKUTEN_AFFILIATE_URL: ${{ secrets.RAKUTEN_AFFILIATE_URL }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+        run: python main_rakuten.py
+
+      - name: 楽天ログをコミット
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/post_log_rakuten.json
+          git diff --staged --quiet || git commit -m "chore: update rakuten post log [skip ci]"
+          git push
