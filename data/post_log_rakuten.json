@@ -100,5 +100,18 @@
     "success": true,
     "thread_id": "18118622065588097",
     "error": ""
+  },
+  {
+    "posted_at": "2026-05-05T13:44:38.023068+09:00",
+    "category": "beauty_small",
+    "affiliate_post": false,
+    "is_affiliate": false,
+    "has_affiliate_link": false,
+    "used_fallback": true,
+    "dry_run": false,
+    "text": "美容小物で続いたのは、見た目が派手なものより毎日手が伸びるものだった。清潔感は高級品より習慣で決まるので、洗いやすい道具や置き場所の方が意外と大事。続けやすさはかなり効く。",
+    "success": true,
+    "thread_id": "18095938751027603",
+    "error": ""
   }
 ]
