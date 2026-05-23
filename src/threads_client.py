@@ -18,6 +18,37 @@ log = logging.getLogger(__name__)
 THREADS_API = "https://graph.threads.net/v1.0"
 
 
+def _response_summary(resp: requests.Response, max_chars: int = 500) -> str:
+    """Return a readable API error summary for JSON, HTML, or plain text bodies."""
+    content_type = resp.headers.get("content-type", "")
+    try:
+        data = resp.json()
+        err = data.get("error", data)
+        if isinstance(err, dict):
+            message = err.get("message") or err.get("error_user_msg") or str(err)
+            code = err.get("code")
+            subcode = err.get("error_subcode")
+            parts = [f"message={message}"]
+            if code is not None:
+                parts.append(f"code={code}")
+            if subcode is not None:
+                parts.append(f"subcode={subcode}")
+            return ", ".join(parts)
+        return str(data)[:max_chars]
+    except ValueError:
+        body = " ".join(resp.text.split())
+        if len(body) > max_chars:
+            body = body[:max_chars] + "..."
+        return f"non-json response ({content_type or 'unknown content-type'}): {body}"
+
+
+def _is_transient_error(resp: requests.Response) -> bool:
+    try:
+        return bool(resp.json().get("error", {}).get("is_transient", False))
+    except ValueError:
+        return 500 <= resp.status_code < 600
+
+
 class ThreadsClient:
     def __init__(self, access_token: str):
         self.token = access_token
@@ -35,6 +66,8 @@ class ThreadsClient:
                 params={"fields": "id,username", "access_token": self.token},
                 timeout=15,
             )
+            if not resp.ok:
+                log.error(f"認証エラー {resp.status_code}: {_response_summary(resp)}")
             resp.raise_for_status()
             data = resp.json()
             self._user_id = data["id"]
@@ -53,7 +86,7 @@ class ThreadsClient:
             timeout=15,
         )
         if not resp.ok:
-            log.error(f"コンテナ作成エラー {resp.status_code}: {resp.text}")
+            log.error(f"コンテナ作成エラー {resp.status_code}: {_response_summary(resp)}")
         resp.raise_for_status()
         container_id = resp.json()["id"]
         log.info(f"コンテナ作成: {container_id}")
@@ -87,8 +120,8 @@ class ThreadsClient:
                 log.info(f"公開成功: thread_id={thread_id}")
                 return thread_id
 
-            is_transient = resp.json().get("error", {}).get("is_transient", False)
-            log.error(f"公開エラー {resp.status_code} (attempt {attempt}): {resp.text}")
+            is_transient = _is_transient_error(resp)
+            log.error(f"公開エラー {resp.status_code} (attempt {attempt}): {_response_summary(resp)}")
             if is_transient and attempt < max_retries:
                 wait = 10 * attempt  # 10s → 20s
                 log.info(f"一時エラーのためリトライ待機 {wait}s...")
